@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  MapPin, 
-  Package, 
+import {
+  Search,
+  Filter,
+  MapPin,
+  Package,
   Star,
   Shield,
   Clock,
@@ -39,16 +39,16 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
     const fetchMarketData = async () => {
       try {
         const data = await api.getMarket();
-        
+
         // Map the backend snake_case data to match your frontend camelCase structure
         const mappedData = data.map((item: any) => ({
           id: item.id,
-          name: item.crop_name,
+          name: item.variety || 'Unknown Crop',
           variety: item.variety || '',
           quantity: item.quantity || 0,
           unit: item.unit || 'quintal',
-          basePrice: item.base_price,
-          currentPrice: item.current_price || item.base_price,
+          basePrice: item.current_price,
+          currentPrice: item.current_price,
           farmerId: item.farmer_id,
           farmerName: item.users?.full_name || 'Unknown Farmer',
           location: item.location || 'Unknown Location',
@@ -79,22 +79,22 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
   const filteredProduces = liveProduces
     .filter(produce => {
       const matchesSearch = produce.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            produce.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (produce.variety && produce.variety.toLowerCase().includes(searchTerm.toLowerCase()));
-      
+        produce.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (produce.variety && produce.variety.toLowerCase().includes(searchTerm.toLowerCase()));
+
       const matchesCrop = selectedCrop === 'all' || produce.name === selectedCrop;
       const matchesLocation = selectedLocation === 'all' || produce.location === selectedLocation;
-      
+
       const matchesQuantity = (!quantityRange.min || produce.quantity >= parseInt(quantityRange.min)) &&
-                              (!quantityRange.max || produce.quantity <= parseInt(quantityRange.max));
-      
+        (!quantityRange.max || produce.quantity <= parseInt(quantityRange.max));
+
       const matchesPrice = (!priceRange.min || produce.currentPrice >= parseInt(priceRange.min)) &&
-                           (!priceRange.max || produce.currentPrice <= parseInt(priceRange.max));
-      
+        (!priceRange.max || produce.currentPrice <= parseInt(priceRange.max));
+
       const matchesVerified = !verifiedOnly || produce.verified;
-      
-      return matchesSearch && matchesCrop && matchesLocation && matchesQuantity && 
-             matchesPrice && matchesVerified && produce.status === 'active';
+
+      return matchesSearch && matchesCrop && matchesLocation && matchesQuantity &&
+        matchesPrice && matchesVerified && produce.status === 'active';
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -112,7 +112,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
     const now = new Date();
     const date = new Date(dateString);
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return 'अभी / Just now';
     if (diffInHours < 24) return `${diffInHours} घंटे पहले / ${diffInHours}h ago`;
     return `${Math.floor(diffInHours / 24)} दिन पहले / ${Math.floor(diffInHours / 24)}d ago`;
@@ -178,9 +178,8 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
         <button
           onClick={() => setShowFilters(!showFilters)}
           title="Toggle filters panel"
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
-            showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'
-          }`}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'
+            }`}
         >
           <SlidersHorizontal size={16} />
           <span>फिल्टर / Filters</span>
@@ -210,7 +209,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-800">उन्नत फिल्टर / Advanced Filters</h3>
-                        <button
+            <button
               onClick={() => setShowFilters(false)}
               title="Close filters panel"
               aria-label="Close filters panel"
@@ -345,18 +344,18 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
       {/* Produce Listings */}
       <div className="space-y-4">
         {filteredProduces.map((produce) => (
-          <div 
-            key={produce.id} 
+          <div
+            key={produce.id}
             className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => onViewProduce(produce)}
           >
             <div className="flex">
-              <img 
-                src={produce.images[0] || "https://images.pexels.com/photos/1656663/pexels-photo-1656663.jpeg"} 
+              <img
+                src={produce.images[0] || "https://images.pexels.com/photos/1656663/pexels-photo-1656663.jpeg"}
                 alt={produce.name}
                 className="w-24 h-24 object-cover"
               />
-              
+
               <div className="flex-1 p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
@@ -377,37 +376,37 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
                         </div>
                       )}
                     </div>
-                    
+
                     {produce.variety && (
                       <p className="text-sm text-gray-600 mb-1">किस्म: {produce.variety}</p>
                     )}
-                    
+
                     <div className="flex items-center text-sm text-gray-600 mb-2">
                       <MapPin size={14} className="mr-1" />
                       <span>{produce.location}</span>
                     </div>
                   </div>
-                  
+
                   <div className="text-right">
                     <p className="text-xl font-bold text-green-600">₹{produce.currentPrice.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">per {produce.unit}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
                     <div className="flex items-center space-x-1">
                       <Package size={14} />
                       <span>{produce.quantity} {produce.unit}</span>
                     </div>
-                    
+
                     <div className="flex items-center space-x-1">
                       <Clock size={14} />
                       <span>{formatTimeAgo(produce.harvestDate)}</span>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     type="button"
                     title="View produce details"
                     aria-label="View produce details"
@@ -418,7 +417,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
                 </div>
               </div>
             </div>
-            
+
             {produce.description && (
               <div className="px-4 pb-4">
                 <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
@@ -436,7 +435,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
           <Package size={48} className="mx-auto text-gray-400 mb-3" />
           <p className="text-gray-500 font-medium">कोई फसल नहीं मिली</p>
           <p className="text-sm text-gray-400 mb-4">No produce found matching your criteria</p>
-          <button 
+          <button
             onClick={clearAllFilters}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >

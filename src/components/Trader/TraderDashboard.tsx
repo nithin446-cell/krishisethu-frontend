@@ -5,13 +5,13 @@ import { supabase } from '../../lib/supabase';
 
 interface TraderDashboardProps {
   availableProduce: Produce[]; // You can leave this as a prop, or fetch live inside the component
-  traderId: string; 
+  traderId: string;
 }
 
 const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, traderId }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
-  
+
   // LIVE DATA STATES
   const [liveTransactions, setLiveTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
             status,
             created_at,
             bids ( quantity ),
-            crop_listings ( crop_name, location )
+            crop_listings ( variety, location )
           `)
           .eq('trader_id', traderId)
           .order('created_at', { ascending: false });
@@ -74,15 +74,15 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
    */
   const submitDispute = async (orderId: string) => {
     if (!disputeReason.trim()) return alert("Please provide a reason / कृपया कारण बताएं।");
-    
+
     try {
       const { error } = await supabase
         .from('disputes')
-        .insert([{ 
+        .insert([{
           order_id: orderId, // Linked to the finalized Order/Transaction
-          trader_id: traderId, 
+          trader_id: traderId,
           reason: disputeReason,
-          status: 'open' 
+          status: 'open'
         }]);
 
       if (error) throw error;
@@ -181,7 +181,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
             </button>
           ))}
         </div>
-        
+
         <div className="p-4 space-y-4">
           {filteredTransactions.map((transaction) => (
             <div key={transaction.id} className="border border-gray-200 rounded-lg p-4">
@@ -203,7 +203,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                 <button className="flex-1 py-2 px-4 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
                   View Details
                 </button>
-                <button 
+                <button
                   onClick={() => setDisputingTxId(transaction.id)}
                   className="flex-1 py-2 px-4 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm font-medium flex justify-center items-center gap-2"
                 >
@@ -215,15 +215,15 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
               {disputingTxId === transaction.id && (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm font-semibold text-red-800 mb-2">Describe the issue:</p>
-                  <textarea 
-                    className="w-full p-2 border rounded-md text-sm mb-2" 
-                    rows={3} 
+                  <textarea
+                    className="w-full p-2 border rounded-md text-sm mb-2"
+                    rows={3}
                     value={disputeReason}
                     onChange={e => setDisputeReason(e.target.value)}
                     placeholder="e.g., Quality mismatch..."
                   />
                   <div className="flex justify-end space-x-2">
-                    <button onClick={() => {setDisputingTxId(null); setDisputeReason('');}} className="px-3 py-1 text-sm bg-gray-200 rounded-md">Cancel</button>
+                    <button onClick={() => { setDisputingTxId(null); setDisputeReason(''); }} className="px-3 py-1 text-sm bg-gray-200 rounded-md">Cancel</button>
                     <button onClick={() => submitDispute(transaction.id)} className="px-3 py-1 text-sm bg-red-600 text-white rounded-md">Submit</button>
                   </div>
                 </div>

@@ -39,7 +39,7 @@ function App() {
   const [appState, setAppState] = useState<'splash' | 'language' | 'auth' | 'main'>('splash');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
-  
+
   // States
   const [produces, setProduces] = useState(mockProduce); // Leaving for legacy components
   const [selectedProduce, setSelectedProduce] = useState<Produce | null>(null);
@@ -59,7 +59,7 @@ function App() {
   // UPDATED: Now accepts real userId from Supabase Auth and fetches profile
   const handleLogin = async (userType: 'farmer' | 'trader' | 'admin', userId?: string) => {
     let userData: any = {
-      id: userId || `dev-${Date.now()}`,
+      id: userId || crypto.randomUUID(),
       type: userType,
       name: `${userType.charAt(0).toUpperCase() + userType.slice(1)} User`,
       location: 'India',
@@ -74,7 +74,7 @@ function App() {
         .select('*')
         .eq('id', userId)
         .single();
-        
+
       if (data) {
         userData.name = data.full_name || userData.name;
         userData.phone = data.phone || '';
@@ -160,13 +160,6 @@ function App() {
           return (
             <EnhancedDashboard
               farmerId={user.id} // Passed real ID for fetching live listings
-              produces={produces.filter(p => p.farmerId === user.id)}
-              marketPrices={mockMarketPrices}
-              transactions={mockTransactions}
-              onAddProduce={() => setActiveTab('add')}
-              onViewPrices={() => setActiveTab('market')}
-              onViewSchemes={() => setActiveTab('schemes')}
-              onViewTraders={() => setActiveTab('traders')}
             />
           );
         }
@@ -177,7 +170,6 @@ function App() {
               <TraderDashboard
                 traderId={user.id} // Passed real ID for disputes
                 availableProduce={produces}
-                myTransactions={mockTransactions}
               />
               <button
                 onClick={handleViewTransaction}
@@ -194,10 +186,10 @@ function App() {
         }
 
         return null;
-      
+
       case 'market':
         return <EnhancedMarketPrices prices={mockMarketPrices} />;
-      
+
       case 'browse':
         return (
           <TraderListings
@@ -208,7 +200,7 @@ function App() {
             }}
           />
         );
-      
+
       case 'add':
         return (
           <EnhancedAddProduce
@@ -217,7 +209,7 @@ function App() {
             farmerId={user.id} // Passed real ID
           />
         );
-      
+
       case 'chat':
         return (
           <div className="p-4 space-y-4">
@@ -226,7 +218,7 @@ function App() {
               <p className="text-sm text-gray-600">Messages</p>
             </div>
             {mockUsers.filter(u => u.id !== currentUser.id).map((u) => (
-              <div 
+              <div
                 key={u.id}
                 onClick={() => setChatUser(u)}
                 className="bg-white rounded-xl shadow-md border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
@@ -244,7 +236,7 @@ function App() {
             ))}
           </div>
         );
-      
+
       case 'profile':
         return (
           <div className="p-4 space-y-6">
@@ -252,7 +244,7 @@ function App() {
               <h2 className="text-xl font-bold text-gray-800">प्रोफ़ाइल</h2>
               <p className="text-sm text-gray-600">Profile</p>
             </div>
-            
+
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
               <div className="text-center mb-6">
                 <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -261,7 +253,7 @@ function App() {
                 <h3 className="text-xl font-semibold text-gray-800">{currentUser.name}</h3>
                 <p className="text-gray-600">{currentUser.location}</p>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">फ़ोन नंबर</span>
@@ -278,7 +270,7 @@ function App() {
 
       case 'schemes':
         return <GovernmentSchemes schemes={mockGovernmentSchemes} />;
-      
+
       case 'traders':
         return (
           <TraderListingsForFarmers
@@ -287,7 +279,7 @@ function App() {
             onContactTrader={(trader) => setChatUser(trader)}
           />
         );
-      
+
       default:
         return <div>Page not found</div>;
     }
@@ -321,17 +313,17 @@ function App() {
       {appState === 'main' && currentUser && (
         <div className="min-h-screen bg-gray-50">
           {!chatUser && !showBidding && !showTransaction && (
-            <Header 
+            <Header
               userName={currentUser.name}
               location={currentUser.location}
               unreadCount={3}
             />
           )}
-          
+
           <main className={`${!chatUser && !showBidding && !showTransaction ? 'pt-4 pb-20' : 'pb-20 h-screen'}`}>
             {renderContent()}
           </main>
-          
+
           {!chatUser && !showBidding && !showTransaction && (
             <Navigation
               activeTab={activeTab}

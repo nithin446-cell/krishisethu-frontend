@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Camera, MapPin, Calendar, Package, ArrowLeft, Check, Upload, X } from 'lucide-react';
-import { api } from '../../lib/api'; // 1. Imported our API helper
+import { supabase } from '../../lib/supabase';
 
 interface EnhancedAddProduceProps {
   onSubmit: (produceData: any) => void;
@@ -23,7 +23,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
   // State for actual file uploads and their local previews
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  
+
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
       if (allowedFiles.length > 0) {
         setImageFiles(prev => [...prev, ...allowedFiles]);
-        
+
         // Generate temporary local URLs for preview
         const newPreviews = allowedFiles.map(file => URL.createObjectURL(file));
         setImagePreviews(prev => [...prev, ...newPreviews]);
@@ -80,7 +80,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
     }, 2000);
   };
 
-  // 👇 OPTION A: FormData Upload Logic
+  // 👇 REWRITTEN FOR DIRECT SUPABASE UPLOAD 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -93,30 +93,61 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
     setError(null);
 
     try {
-      // Create FormData to send text AND files to the Express Backend
-      const uploadData = new FormData();
-      uploadData.append('farmer_id', farmerId);
-      uploadData.append('crop_name', formData.name);
-      uploadData.append('variety', formData.variety);
-      uploadData.append('quantity', formData.quantity.toString());
-      uploadData.append('unit', formData.unit);
-      uploadData.append('base_price', formData.expectedPrice.toString());
-      uploadData.append('location', formData.location);
-      uploadData.append('description', formData.description);
-      uploadData.append('status', 'active');
+      // 1. First insert the crop listing to get an ID
+      const { data: listingData, error: listingError } = await supabase
+        .from('crop_listings')
+        .insert([{
+          farmer_id: farmerId,
+          variety: formData.variety ? formData.variety : formData.name, // Use variety if provided, else crop name
+          quantity: formData.quantity,
+          unit: formData.unit,
+          current_price: Number(formData.expectedPrice),
+          location: formData.location
+        }])
+        .select()
+        .single();
 
-      // Append image files to FormData
+      if (listingError) throw listingError;
+
+      const listingId = listingData.id;
+      const uploadedImageUrls: string[] = [];
+
+      // 2. Upload images to Supabase Storage if any exist
       if (imageFiles.length > 0) {
-        imageFiles.forEach((file) => {
-          uploadData.append('images', file); // Matches the backend multer expectation
-        });
+        for (const file of imageFiles) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random()}.${fileExt}`;
+          const filePath = `${farmerId}/${listingId}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('crop_pictures') // FIXED THE BUCKET NAME HERE
+            .upload(filePath, file);
+
+          if (uploadError) throw uploadError;
+
+          // Get the public URL for the image
+          const { data: publicUrlData } = supabase.storage
+            .from('crop_pictures') // FIXED THE BUCKET NAME HERE
+            .getPublicUrl(filePath);
+
+          uploadedImageUrls.push(publicUrlData.publicUrl);
+        }
+
+        // 3. Insert into crop_pictures table linking to the new listing
+        const pictureInserts = uploadedImageUrls.map(url => ({
+          listing_id: listingId,
+          image_url: url
+        }));
+
+        const { error: picError } = await supabase
+          .from('crop_pictures')
+          .insert(pictureInserts);
+
+        if (picError) throw picError;
       }
 
-      // Call our custom API, passing TRUE so it knows it's FormData
-      const result = await api.listProduce(uploadData, true);
-
       alert('Produce and images uploaded successfully!');
-      onSubmit(result); // Pass the result up
+      onSubmit(listingData); // Pass the result up
       onBack(); // Return to dashboard
 
     } catch (err: any) {
@@ -126,7 +157,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
       setIsSubmitting(false);
     }
   };
-  // 👆 END OPTION A
+  // 👆 END SUPABASE REWRITE
 
   const isFormValid = () => {
     return formData.name && formData.quantity && formData.expectedPrice && formData.location;
@@ -148,7 +179,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
       </div>
 
       <form onSubmit={handleSubmit} className="p-4 space-y-6">
-        
+
         {/* --- CROP NAME DROPDOWN --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
           <label className="block text-sm font-medium text-gray-700 mb-3">फसल का नाम / Crop Name *</label>
@@ -219,14 +250,14 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
         {/* --- ACTUAL FILE UPLOAD SECTION --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
           <label className="block text-sm font-medium text-gray-700 mb-3">फसल की तस्वीरें / Produce Images</label>
-          
+
           <div className="space-y-4">
             <label className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-green-500 transition-colors group cursor-pointer block">
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*" 
-                className="hidden" 
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
                 onChange={handleImageChange}
                 disabled={imageFiles.length >= 5}
               />
@@ -238,7 +269,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
                 <p className="text-xs text-gray-500">Maximum 5 images allowed</p>
               </div>
             </label>
-            
+
             {imagePreviews.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-3">
@@ -283,9 +314,8 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
               type="button"
               onClick={detectLocation}
               disabled={isDetectingLocation}
-              className={`px-6 py-4 rounded-lg font-medium transition-colors ${
-                isDetectingLocation ? 'bg-gray-300 text-gray-500' : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
+              className={`px-6 py-4 rounded-lg font-medium transition-colors ${isDetectingLocation ? 'bg-gray-300 text-gray-500' : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
             >
               {isDetectingLocation ? 'खोज रहे हैं...' : 'स्थान खोजें'}
             </button>
@@ -315,11 +345,10 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
           <button
             type="submit"
             disabled={!isFormValid() || isSubmitting}
-            className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors ${
-              isFormValid() && !isSubmitting
-                ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors ${isFormValid() && !isSubmitting
+              ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center space-x-2">

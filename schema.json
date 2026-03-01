@@ -1,0 +1,2436 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "",
+    "title": "standard public schema",
+    "version": "14.1"
+  },
+  "host": "nywdzfjizwgwhowuozei.supabase.co:443",
+  "basePath": "/",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json",
+    "application/vnd.pgrst.object+json;nulls=stripped",
+    "application/vnd.pgrst.object+json",
+    "text/csv"
+  ],
+  "produces": [
+    "application/json",
+    "application/vnd.pgrst.object+json;nulls=stripped",
+    "application/vnd.pgrst.object+json",
+    "text/csv"
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "produces": [
+          "application/openapi+json",
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "OpenAPI description (this document)",
+        "tags": [
+          "Introspection"
+        ]
+      }
+    },
+    "/bids": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.bids.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.quantity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.message"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/bids"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "bids"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.bids"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "bids"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.bids.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.quantity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.message"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "bids"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.bids.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.quantity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bids.message"
+          },
+          {
+            "$ref": "#/parameters/body.bids"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "bids"
+        ]
+      }
+    },
+    "/orders": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.orders.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.bid_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.final_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/orders"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.orders"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.orders.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.bid_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.final_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.orders.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.bid_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.final_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.orders.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.orders"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/crop_listings": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.variety"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.quantity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.unit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.current_price"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.location"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/crop_listings"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "crop_listings"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.crop_listings"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "crop_listings"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.variety"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.quantity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.unit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.current_price"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.location"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "crop_listings"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.variety"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.quantity"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.unit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.current_price"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.location"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_listings.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/body.crop_listings"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "crop_listings"
+        ]
+      }
+    },
+    "/bid_history": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.bid_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.historical_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.updated_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.upload_batch_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/bid_history"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "bid_history"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.bid_history"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "bid_history"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.bid_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.historical_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.updated_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.upload_batch_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "bid_history"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.bid_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.historical_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.updated_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.upload_batch_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.bid_history.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.bid_history"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "bid_history"
+        ]
+      }
+    },
+    "/crop_pictures": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.image_url"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/crop_pictures"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "crop_pictures"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.crop_pictures"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "crop_pictures"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.image_url"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "crop_pictures"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.listing_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.image_url"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.crop_pictures.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.crop_pictures"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "crop_pictures"
+        ]
+      }
+    },
+    "/admin_logs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.admin_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.action"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.target_table"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.details"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/admin_logs"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "admin_logs"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.admin_logs"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "admin_logs"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.admin_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.action"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.target_table"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.details"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "admin_logs"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.admin_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.action"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.target_table"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.details"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.admin_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.admin_logs"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "admin_logs"
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.users.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.full_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/users"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.users"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.users.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.full_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.users.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.full_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.users.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.users"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/audit_logs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.action"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.table_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.record_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.old_data"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.new_data"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/audit_logs"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "audit_logs"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.audit_logs"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "audit_logs"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.action"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.table_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.record_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.old_data"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.new_data"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "audit_logs"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.action"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.table_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.record_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.old_data"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.new_data"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.audit_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.audit_logs"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "audit_logs"
+        ]
+      }
+    },
+    "/disputes": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.disputes.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.order_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/disputes"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "disputes"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.disputes"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "disputes"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.disputes.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.order_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "disputes"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.disputes.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.order_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.trader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.farmer_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.disputes.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.disputes"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "disputes"
+        ]
+      }
+    },
+    "/rpc/rls_auto_enable": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) rls_auto_enable"
+        ]
+      }
+    },
+    "/rpc/accept_bid": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "target_bid_id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "target_listing_id": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "target_bid_id",
+                "target_listing_id"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) accept_bid"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "bids": {
+      "required": [
+        "id",
+        "listing_id",
+        "trader_id",
+        "amount",
+        "quantity"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "listing_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "trader_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "amount": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "status": {
+          "default": "pending",
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "quantity": {
+          "default": 0,
+          "format": "numeric",
+          "type": "number"
+        },
+        "message": {
+          "format": "text",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "orders": {
+      "required": [
+        "id",
+        "final_amount"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "listing_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "bid_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "farmer_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "trader_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "final_amount": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "status": {
+          "default": "pending_payment",
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "crop_listings": {
+      "required": [
+        "id",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "variety": {
+          "format": "text",
+          "type": "string"
+        },
+        "quantity": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "unit": {
+          "format": "text",
+          "type": "string"
+        },
+        "current_price": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "location": {
+          "format": "text",
+          "type": "string"
+        },
+        "farmer_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "bid_history": {
+      "required": [
+        "id",
+        "historical_amount"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "bid_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "historical_amount": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "updated_by": {
+          "description": "Note:\nThis is a Foreign Key to `users.id`.<fk table='users' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "upload_batch_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "crop_pictures": {
+      "required": [
+        "id",
+        "image_url"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "listing_id": {
+          "description": "Note:\nThis is a Foreign Key to `crop_listings.id`.<fk table='crop_listings' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "image_url": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "admin_logs": {
+      "required": [
+        "id",
+        "action"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "admin_id": {
+          "description": "Note:\nThis is a Foreign Key to `users.id`.<fk table='users' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "action": {
+          "format": "text",
+          "type": "string"
+        },
+        "target_table": {
+          "format": "text",
+          "type": "string"
+        },
+        "details": {
+          "format": "jsonb"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "users": {
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "phone": {
+          "format": "text",
+          "type": "string"
+        },
+        "full_name": {
+          "format": "text",
+          "type": "string"
+        },
+        "role": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "audit_logs": {
+      "required": [
+        "id",
+        "action"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "user_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "action": {
+          "format": "text",
+          "type": "string"
+        },
+        "table_name": {
+          "format": "text",
+          "type": "string"
+        },
+        "record_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "old_data": {
+          "format": "jsonb"
+        },
+        "new_data": {
+          "format": "jsonb"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "disputes": {
+      "required": [
+        "id",
+        "order_id",
+        "trader_id"
+      ],
+      "properties": {
+        "id": {
+          "default": "gen_random_uuid()",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "order_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "trader_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "farmer_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "reason": {
+          "format": "text",
+          "type": "string"
+        },
+        "status": {
+          "default": "open",
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "parameters": {
+    "preferParams": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "in": "header",
+      "type": "string"
+    },
+    "preferReturn": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "return=representation",
+        "return=minimal",
+        "return=none"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "preferCount": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "count=none"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "preferPost": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "return=representation",
+        "return=minimal",
+        "return=none",
+        "resolution=ignore-duplicates",
+        "resolution=merge-duplicates"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "select": {
+      "name": "select",
+      "description": "Filtering Columns",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "on_conflict": {
+      "name": "on_conflict",
+      "description": "On Conflict",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "order": {
+      "name": "order",
+      "description": "Ordering",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "range": {
+      "name": "Range",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "header",
+      "type": "string"
+    },
+    "rangeUnit": {
+      "name": "Range-Unit",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "default": "items",
+      "in": "header",
+      "type": "string"
+    },
+    "offset": {
+      "name": "offset",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "limit": {
+      "name": "limit",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.bids": {
+      "name": "bids",
+      "description": "bids",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/bids"
+      }
+    },
+    "rowFilter.bids.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bids.listing_id": {
+      "name": "listing_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bids.trader_id": {
+      "name": "trader_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bids.amount": {
+      "name": "amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bids.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bids.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bids.quantity": {
+      "name": "quantity",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bids.message": {
+      "name": "message",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.orders": {
+      "name": "orders",
+      "description": "orders",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/orders"
+      }
+    },
+    "rowFilter.orders.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.orders.listing_id": {
+      "name": "listing_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.orders.bid_id": {
+      "name": "bid_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.orders.farmer_id": {
+      "name": "farmer_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.orders.trader_id": {
+      "name": "trader_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.orders.final_amount": {
+      "name": "final_amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.orders.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.orders.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.crop_listings": {
+      "name": "crop_listings",
+      "description": "crop_listings",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/crop_listings"
+      }
+    },
+    "rowFilter.crop_listings.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_listings.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_listings.variety": {
+      "name": "variety",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_listings.quantity": {
+      "name": "quantity",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_listings.unit": {
+      "name": "unit",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_listings.current_price": {
+      "name": "current_price",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_listings.location": {
+      "name": "location",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_listings.farmer_id": {
+      "name": "farmer_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.bid_history": {
+      "name": "bid_history",
+      "description": "bid_history",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/bid_history"
+      }
+    },
+    "rowFilter.bid_history.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bid_history.bid_id": {
+      "name": "bid_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bid_history.historical_amount": {
+      "name": "historical_amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bid_history.updated_by": {
+      "name": "updated_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bid_history.upload_batch_id": {
+      "name": "upload_batch_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.bid_history.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.crop_pictures": {
+      "name": "crop_pictures",
+      "description": "crop_pictures",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/crop_pictures"
+      }
+    },
+    "rowFilter.crop_pictures.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_pictures.listing_id": {
+      "name": "listing_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_pictures.image_url": {
+      "name": "image_url",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.crop_pictures.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.admin_logs": {
+      "name": "admin_logs",
+      "description": "admin_logs",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/admin_logs"
+      }
+    },
+    "rowFilter.admin_logs.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.admin_logs.admin_id": {
+      "name": "admin_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.admin_logs.action": {
+      "name": "action",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.admin_logs.target_table": {
+      "name": "target_table",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.admin_logs.details": {
+      "name": "details",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.admin_logs.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.users": {
+      "name": "users",
+      "description": "users",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/users"
+      }
+    },
+    "rowFilter.users.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.phone": {
+      "name": "phone",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.full_name": {
+      "name": "full_name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.role": {
+      "name": "role",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.users.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.audit_logs": {
+      "name": "audit_logs",
+      "description": "audit_logs",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/audit_logs"
+      }
+    },
+    "rowFilter.audit_logs.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.audit_logs.user_id": {
+      "name": "user_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.audit_logs.action": {
+      "name": "action",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.audit_logs.table_name": {
+      "name": "table_name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.audit_logs.record_id": {
+      "name": "record_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.audit_logs.old_data": {
+      "name": "old_data",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.audit_logs.new_data": {
+      "name": "new_data",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.audit_logs.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.disputes": {
+      "name": "disputes",
+      "description": "disputes",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/disputes"
+      }
+    },
+    "rowFilter.disputes.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.disputes.order_id": {
+      "name": "order_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.disputes.trader_id": {
+      "name": "trader_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.disputes.farmer_id": {
+      "name": "farmer_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.disputes.reason": {
+      "name": "reason",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.disputes.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.disputes.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    }
+  },
+  "externalDocs": {
+    "description": "PostgREST Documentation",
+    "url": "https://postgrest.org/en/v14/references/api.html"
+  }
+}

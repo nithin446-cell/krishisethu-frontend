@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -9,16 +9,22 @@ import {
   Clock,
   Eye,
   SlidersHorizontal,
-  X
+  X,
+  Loader
 } from 'lucide-react';
-import { Produce } from '../../types';
+import { api } from '../../lib/api'; // Make sure you created this api helper!
 
 interface TraderListingsProps {
-  produces: Produce[];
-  onViewProduce: (produce: Produce) => void;
+  onViewProduce: (produce: any) => void;
+  traderId?: string; // Added for future bidding actions
 }
 
-const TraderListings: React.FC<TraderListingsProps> = ({ produces, onViewProduce }) => {
+const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId }) => {
+  // Backend Integration State
+  const [liveProduces, setLiveProduces] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Original UI States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
@@ -28,23 +34,62 @@ const TraderListings: React.FC<TraderListingsProps> = ({ produces, onViewProduce
   const [showFilters, setShowFilters] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  const cropTypes = [...new Set(produces.map(p => p.name))];
-  const locations = [...new Set(produces.map(p => p.location))];
+  // Fetch Live Market Data
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        const data = await api.getMarket();
+        
+        // Map the backend snake_case data to match your frontend camelCase structure
+        const mappedData = data.map((item: any) => ({
+          id: item.id,
+          name: item.crop_name,
+          variety: item.variety || '',
+          quantity: item.quantity || 0,
+          unit: item.unit || 'quintal',
+          basePrice: item.base_price,
+          currentPrice: item.current_price || item.base_price,
+          farmerId: item.farmer_id,
+          farmerName: item.users?.full_name || 'Unknown Farmer',
+          location: item.location || 'Unknown Location',
+          harvestDate: item.created_at, // Using created_at for time ago
+          images: item.crop_pictures?.map((p: any) => p.image_url) || [],
+          bids: item.bids || [],
+          verified: true, // You can update this based on farmer verification status later
+          description: item.description,
+          status: item.status
+        }));
 
-  const filteredProduces = produces
+        setLiveProduces(mappedData);
+      } catch (error) {
+        console.error("Error loading market data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMarketData();
+  }, []);
+
+  // Filter dynamic arrays based on fetched data
+  const cropTypes = [...new Set(liveProduces.map(p => p.name))];
+  const locations = [...new Set(liveProduces.map(p => p.location))];
+
+  // Original Filtering Logic applied to Live Data
+  const filteredProduces = liveProduces
     .filter(produce => {
       const matchesSearch = produce.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           produce.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (produce.variety && produce.variety.toLowerCase().includes(searchTerm.toLowerCase()));
+                            produce.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (produce.variety && produce.variety.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesCrop = selectedCrop === 'all' || produce.name === selectedCrop;
       const matchesLocation = selectedLocation === 'all' || produce.location === selectedLocation;
       
       const matchesQuantity = (!quantityRange.min || produce.quantity >= parseInt(quantityRange.min)) &&
-                             (!quantityRange.max || produce.quantity <= parseInt(quantityRange.max));
+                              (!quantityRange.max || produce.quantity <= parseInt(quantityRange.max));
       
       const matchesPrice = (!priceRange.min || produce.currentPrice >= parseInt(priceRange.min)) &&
-                          (!priceRange.max || produce.currentPrice <= parseInt(priceRange.max));
+                           (!priceRange.max || produce.currentPrice <= parseInt(priceRange.max));
       
       const matchesVerified = !verifiedOnly || produce.verified;
       
@@ -91,6 +136,15 @@ const TraderListings: React.FC<TraderListingsProps> = ({ produces, onViewProduce
     verifiedOnly
   ].filter(Boolean).length;
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+        <p className="text-gray-600 font-medium">Loading live market data...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 space-y-4 pb-24">
       {/* Header */}
@@ -123,6 +177,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ produces, onViewProduce
       <div className="flex items-center justify-between">
         <button
           onClick={() => setShowFilters(!showFilters)}
+          title="Toggle filters panel"
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
             showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'
           }`}
@@ -155,8 +210,10 @@ const TraderListings: React.FC<TraderListingsProps> = ({ produces, onViewProduce
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-800">उन्नत फिल्टर / Advanced Filters</h3>
-            <button
+                        <button
               onClick={() => setShowFilters(false)}
+              title="Close filters panel"
+              aria-label="Close filters panel"
               className="p-1 hover:bg-gray-100 rounded-full"
             >
               <X size={16} className="text-gray-500" />
@@ -350,7 +407,12 @@ const TraderListings: React.FC<TraderListingsProps> = ({ produces, onViewProduce
                     </div>
                   </div>
                   
-                  <button className="p-2 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors">
+                  <button 
+                    type="button"
+                    title="View produce details"
+                    aria-label="View produce details"
+                    className="p-2 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors"
+                  >
                     <Eye size={16} className="text-blue-600" />
                   </button>
                 </div>

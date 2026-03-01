@@ -14,12 +14,17 @@ import EnhancedChatInterface from './components/Chat/EnhancedChatInterface';
 import TransactionTracking from './components/Transaction/TransactionTracking';
 import GovernmentSchemes from './components/Government/GovernmentSchemes';
 import TraderListingsForFarmers from './components/Trader/TraderListingsForFarmers';
-import AdminDashboard from './components/Admin/AdminDashboard.tsx';
+import AdminDashboard from './components/Admin/AdminDashboard';
 import TraderVerification from './components/Admin/TraderVerification';
 import DisputeResolution from './components/Admin/DisputeResolution';
 import PriceDataUpload from './components/Admin/PriceDataUpload';
 import SchemeManagement from './components/Admin/SchemeManagement';
 import TraderDashboard from './components/Trader/TraderDashboard';
+
+// Supabase Import
+import { supabase } from './lib/supabase';
+
+// Mock Data (Kept for components not yet migrated to backend)
 import {
   mockUsers,
   mockProduce,
@@ -34,7 +39,9 @@ function App() {
   const [appState, setAppState] = useState<'splash' | 'language' | 'auth' | 'main'>('splash');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [produces, setProduces] = useState(mockProduce);
+  
+  // States
+  const [produces, setProduces] = useState(mockProduce); // Leaving for legacy components
   const [selectedProduce, setSelectedProduce] = useState<Produce | null>(null);
   const [showBidding, setShowBidding] = useState(false);
   const [chatUser, setChatUser] = useState<User | null>(null);
@@ -45,62 +52,51 @@ function App() {
     setAppState('language');
   };
 
-
   const handleLanguageContinue = () => {
     setAppState('auth');
   };
 
-  const handleLogin = (userType: 'farmer' | 'trader' | 'admin') => {
-    const user = mockUsers.find(u => u.type === userType) || mockUsers[0];
-    setCurrentUser(user);
+  // UPDATED: Now accepts real userId from Supabase Auth and fetches profile
+  const handleLogin = async (userType: 'farmer' | 'trader' | 'admin', userId?: string) => {
+    let userData: any = {
+      id: userId || `dev-${Date.now()}`,
+      type: userType,
+      name: `${userType.charAt(0).toUpperCase() + userType.slice(1)} User`,
+      location: 'India',
+      verified: true,
+      phone: ''
+    };
+
+    if (userId) {
+      // Fetch actual user profile from our public.users table
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (data) {
+        userData.name = data.full_name || userData.name;
+        userData.phone = data.phone || '';
+      }
+    }
+
+    setCurrentUser(userData);
     setAppState('main');
   };
 
-  if (appState === 'splash') {
-    return <SplashScreen onComplete={handleSplashComplete} />;
-  }
   const handleAddProduce = (produceData: any) => {
-    const newProduce: Produce = {
-      id: produceData.id,
-      farmerId: produceData.farmer_id,
-      name: produceData.name,
-      variety: produceData.variety || '',
-      quantity: produceData.quantity,
-      unit: produceData.unit,
-      basePrice: produceData.base_price,
-      currentPrice: produceData.current_price,
-      images: produceData.images.length > 0 ? produceData.images : [
-        'https://images.pexels.com/photos/1656663/pexels-photo-1656663.jpeg'
-      ],
-      description: produceData.description || '',
-      location: produceData.location,
-      harvestDate: produceData.harvest_date || '',
-      status: produceData.status as 'active' | 'bidding' | 'sold' | 'expired',
-      bids: []
-    };
-    setProduces([...produces, newProduce]);
+    // Note: EnhancedAddProduce handles real DB insert now. 
+    // This is just to update local legacy state if needed.
     setActiveTab('dashboard');
   };
 
   const handlePlaceBid = (bid: Omit<Bid, 'id' | 'timestamp'>) => {
-    if (!selectedProduce) return;
-    const newBid: Bid = {
-      ...bid,
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString()
-    };
-
-    const updatedProduces = produces.map(p =>
-      p.id === selectedProduce.id
-        ? { ...p, bids: [...p.bids, newBid], currentPrice: Math.max(p.currentPrice, bid.amount) }
-        : p
-    );
-    setProduces(updatedProduces);
-    setSelectedProduce({ ...selectedProduce, bids: [...selectedProduce.bids, newBid] });
+    // Note: EnhancedBiddingSystem handles real DB insert now.
+    setShowBidding(false);
   };
 
   const handleSendMessage = (content: string) => {
-    // In real app, this would send to backend
     console.log('Sending message:', content);
   };
 
@@ -116,10 +112,14 @@ function App() {
     console.log('Contacting support...');
   };
 
+  if (appState === 'splash') {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
   if (showTransaction) {
     return (
       <TransactionTracking
-        transaction={mockTransactions[0]} // Use mockTransactions[0] directly
+        transaction={mockTransactions[0]}
         onBack={handleBackFromTransaction}
         onContactSupport={handleContactSupport}
       />
@@ -147,7 +147,7 @@ function App() {
         <EnhancedBiddingSystem
           produce={selectedProduce}
           onPlaceBid={handlePlaceBid}
-          currentUserId={user.type === 'trader' ? user.id : '2'}
+          currentUserId={user.id} // Passed real ID
           onBack={() => setShowBidding(false)}
           onContactFarmer={() => setChatUser(mockUsers.find(u => u.id === selectedProduce.farmerId) || mockUsers[0])}
         />
@@ -159,6 +159,7 @@ function App() {
         if (user.type === 'farmer') {
           return (
             <EnhancedDashboard
+              farmerId={user.id} // Passed real ID for fetching live listings
               produces={produces.filter(p => p.farmerId === user.id)}
               marketPrices={mockMarketPrices}
               transactions={mockTransactions}
@@ -174,6 +175,7 @@ function App() {
           return (
             <div className="p-4 space-y-6">
               <TraderDashboard
+                traderId={user.id} // Passed real ID for disputes
                 availableProduce={produces}
                 myTransactions={mockTransactions}
               />
@@ -199,7 +201,7 @@ function App() {
       case 'browse':
         return (
           <TraderListings
-            produces={produces}
+            traderId={user.id} // Passed real ID
             onViewProduce={(produce) => {
               setSelectedProduce(produce);
               setShowBidding(true);
@@ -212,7 +214,7 @@ function App() {
           <EnhancedAddProduce
             onSubmit={handleAddProduce}
             onBack={() => setActiveTab('dashboard')}
-            farmerId={currentUser.id}
+            farmerId={user.id} // Passed real ID
           />
         );
       
@@ -223,25 +225,20 @@ function App() {
               <h2 className="text-xl font-bold text-gray-800">चैट</h2>
               <p className="text-sm text-gray-600">Messages</p>
             </div>
-            {mockUsers.filter(u => u.id !== currentUser.id).map((user) => (
+            {mockUsers.filter(u => u.id !== currentUser.id).map((u) => (
               <div 
-                key={user.id}
-                onClick={() => setChatUser(user)}
+                key={u.id}
+                onClick={() => setChatUser(u)}
                 className="bg-white rounded-xl shadow-md border border-gray-100 p-4 cursor-pointer hover:shadow-lg transition-shadow"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold">{user.name.charAt(0)}</span>
+                    <span className="text-white font-semibold">{u.name.charAt(0)}</span>
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800">{user.name}</h3>
-                    <p className="text-sm text-gray-600">{user.location}</p>
+                    <h3 className="font-semibold text-gray-800">{u.name}</h3>
+                    <p className="text-sm text-gray-600">{u.location}</p>
                   </div>
-                  {user.verified && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                      Verified
-                    </span>
-                  )}
                 </div>
               </div>
             ))}
@@ -268,31 +265,12 @@ function App() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">फ़ोन नंबर</span>
-                  <span className="font-medium">{currentUser.phone}</span>
+                  <span className="font-medium">{currentUser.phone || 'Not provided'}</span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">प्रकार</span>
                   <span className="font-medium capitalize">{currentUser.type === 'farmer' ? 'किसान' : 'व्यापारी'}</span>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-700">सत्यापन स्थिति</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    currentUser.verified 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {currentUser.verified ? 'सत्यापित' : 'गैर-सत्यापित'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                <button
-                  onClick={() => setActiveTab('schemes')}
-                  className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                >
-                  सरकारी योजनाएं देखें
-                </button>
               </div>
             </div>
           </div>
@@ -318,7 +296,7 @@ function App() {
   const renderAdminContent = () => {
     switch (adminSection) {
       case 'dashboard':
-        return <AdminDashboard onNavigate={setAdminSection} />;
+        return <AdminDashboard adminId={currentUser!.id} onNavigate={setAdminSection} />; // Passed real ID
       case 'verification':
         return <TraderVerification onBack={() => setAdminSection('dashboard')} />;
       case 'disputes':
@@ -328,7 +306,7 @@ function App() {
       case 'schemes':
         return <SchemeManagement onBack={() => setAdminSection('dashboard')} />;
       default:
-        return <AdminDashboard onNavigate={setAdminSection} />;
+        return <AdminDashboard adminId={currentUser!.id} onNavigate={setAdminSection} />;
     }
   };
 
@@ -370,7 +348,11 @@ function App() {
         </div>
       )}
 
-      {!currentUser && appState === 'main' && <div>Loading...</div>}
+      {!currentUser && appState === 'main' && (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
     </LanguageProvider>
   );
 }

@@ -8,7 +8,8 @@ import {
   Phone,
   Shield,
   TrendingUp,
-  Package
+  Package,
+  X // <--- Added X
 } from 'lucide-react';
 import { Produce, Bid } from '../../types';
 import { api } from '../../lib/api'; // Make sure this path is correct based on your folder structure
@@ -383,8 +384,5 @@ const EnhancedBiddingSystem: React.FC<EnhancedBiddingSystemProps> = ({
     </div>
   );
 };
-
-// I added X from lucide-react, make sure to import it at the top!
-import { X } from 'lucide-react';
 
 export default EnhancedBiddingSystem;

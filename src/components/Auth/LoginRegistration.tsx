@@ -3,7 +3,7 @@ import { Phone, User, Building, Shield } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface LoginRegistrationProps {
-  onLogin: (userType: 'farmer' | 'trader' | 'admin') => void;
+  onLogin: (userType: 'farmer' | 'trader' | 'admin', userId?: string) => Promise<void> | void;
 }
 
 const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
@@ -12,6 +12,8 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [selectedRole, setSelectedRole] = useState<'farmer' | 'trader' | 'admin' | ''>('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +29,17 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
     }
   };
 
-  const handleRoleSubmit = () => {
-    if (selectedRole) {
-      onLogin(selectedRole);
+  const handleRoleSubmit = async () => {
+    if (!selectedRole) return;
+    setIsLoggingIn(true);
+    setLoginError(null);
+    try {
+      await onLogin(selectedRole, phoneNumber);
+    } catch (err: any) {
+      console.error('Login failed:', err);
+      setLoginError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -73,11 +83,10 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
             <button
               type="submit"
               disabled={phoneNumber.length !== 10}
-              className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors ${
-                phoneNumber.length === 10
-                  ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors ${phoneNumber.length === 10
+                ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
             >
               {t('auth.sendOtp')}
             </button>
@@ -107,11 +116,10 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
             <button
               type="submit"
               disabled={otp.length !== 6}
-              className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors ${
-                otp.length === 6
-                  ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors ${otp.length === 6
+                ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
             >
               {t('auth.verifyOtpBtn')}
             </button>
@@ -131,11 +139,10 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
             <div className="space-y-4">
               <button
                 onClick={() => setSelectedRole('farmer')}
-                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${
-                  selectedRole === 'farmer'
-                    ? 'border-green-500 bg-green-50 shadow-md'
-                    : 'border-gray-200 bg-white hover:border-green-300'
-                }`}
+                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${selectedRole === 'farmer'
+                  ? 'border-green-500 bg-green-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-green-300'
+                  }`}
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -155,11 +162,10 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
 
               <button
                 onClick={() => setSelectedRole('admin')}
-                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${
-                  selectedRole === 'admin'
-                    ? 'border-purple-500 bg-purple-50 shadow-md'
-                    : 'border-gray-200 bg-white hover:border-purple-300'
-                }`}
+                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${selectedRole === 'admin'
+                  ? 'border-purple-500 bg-purple-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-purple-300'
+                  }`}
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -178,11 +184,10 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
               </button>
               <button
                 onClick={() => setSelectedRole('trader')}
-                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${
-                  selectedRole === 'trader'
-                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                    : 'border-gray-200 bg-white hover:border-blue-300'
-                }`}
+                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${selectedRole === 'trader'
+                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-blue-300'
+                  }`}
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -203,11 +208,10 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
               {/* Admin Role - Hidden button for demo purposes */}
               <button
                 onClick={() => setSelectedRole('admin')}
-                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${
-                  selectedRole === 'admin'
-                    ? 'border-purple-500 bg-purple-50 shadow-md'
-                    : 'border-gray-200 bg-white hover:border-purple-300'
-                }`}
+                className={`w-full p-6 rounded-xl border-2 transition-all duration-200 ${selectedRole === 'admin'
+                  ? 'border-purple-500 bg-purple-50 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-purple-300'
+                  }`}
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -238,16 +242,26 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
               </div>
             </div>
 
+            {loginError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm">
+                ⚠️ {loginError}
+              </div>
+            )}
+
             <button
               onClick={handleRoleSubmit}
-              disabled={!selectedRole}
-              className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors ${
-                selectedRole
+              disabled={!selectedRole || isLoggingIn}
+              className={`w-full py-4 rounded-xl text-lg font-semibold transition-colors flex items-center justify-center gap-2 ${selectedRole && !isLoggingIn
                   ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+                }`}
             >
-              {t('common.continue')}
+              {isLoggingIn ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Logging in...
+                </>
+              ) : t('common.continue')}
             </button>
           </div>
         )}

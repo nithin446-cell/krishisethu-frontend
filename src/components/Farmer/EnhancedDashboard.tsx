@@ -8,14 +8,9 @@ export const FarmerDashboard = ({ farmerId }: { farmerId: string }) => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // 1. Fetch live listings & bids from backend API
+  // 1. Fetch live listings & bids directly from Supabase (grouped by listing with nested bids)
   const fetchListings = async () => {
     try {
-      // Because the dashboard renders by listing, we keep using crop_listings directly for simplicity,
-      // but according to the new backend pattern we might use the endpoint. The instruction asks to use `api.getFarmerBids()`.
-      // The API endpoint may return flat bids or grouped. Let's use it as raw data and map it if necessary,
-      // or simply rely on the existing Supabase call for listings and use the API for Accept.
-      // Modifying handleAcceptBid below to use the backend API is the most critical part piece.
       const { data, error } = await supabase
         .from('crop_listings')
         .select(`
@@ -31,6 +26,7 @@ export const FarmerDashboard = ({ farmerId }: { farmerId: string }) => {
           )
         `)
         .eq('farmer_id', farmerId)
+        .in('status', ['active', 'sold'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;

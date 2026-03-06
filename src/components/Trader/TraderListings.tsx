@@ -12,6 +12,7 @@ import {
   X,
   Loader
 } from 'lucide-react';
+import { api } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 interface TraderListingsProps {
   onViewProduce: (produce: any) => void;
@@ -37,36 +38,27 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const { data, error } = await supabase
-          .from('crop_listings')
-          .select(`
-            *,
-            users:farmer_id (full_name),
-            bids (*)
-          `)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
+        const data = await api.getMarket();
 
-        if (error) throw error;
-
-        // Map the backend snake_case data to match frontend camelCase structure
+        // The exact structure returned from backend is somewhat opaque without seeing it,
+        // but assuming it's similar in shape to the original supabase call or standard structure.
         const mappedData = (data || []).map((item: any) => ({
           id: item.id,
           name: item.variety || 'Unknown Crop',
           variety: item.variety || '',
           quantity: item.quantity || 0,
           unit: item.unit || 'quintal',
-          basePrice: item.current_price,
-          currentPrice: item.current_price,
-          farmerId: item.farmer_id,
-          farmerName: item.users?.full_name || 'Unknown Farmer',
+          basePrice: item.current_price || item.currentPrice,
+          currentPrice: item.current_price || item.currentPrice,
+          farmerId: item.farmer_id || item.farmerId,
+          farmerName: item.users?.full_name || item.farmerName || 'Unknown Farmer',
           location: item.location || 'Unknown Location',
-          harvestDate: item.created_at, // Using created_at for time ago
-          images: [], // Assuming crop_pictures is not strictly necessary for MVP or needs handling later
+          harvestDate: item.created_at || item.harvestDate,
+          images: item.images || [],
           bids: item.bids || [],
-          verified: true, // You can update this based on farmer verification status later
+          verified: item.verified !== undefined ? item.verified : true,
           description: item.description,
-          status: item.status
+          status: item.status || 'active'
         }));
 
         setLiveProduces(mappedData);

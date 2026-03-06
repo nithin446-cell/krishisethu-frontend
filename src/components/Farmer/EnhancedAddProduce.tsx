@@ -102,7 +102,8 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
           quantity: formData.quantity,
           unit: formData.unit,
           current_price: Number(formData.expectedPrice),
-          location: formData.location
+          location: formData.location,
+          status: 'active' // Ensure it's active so it shows up
         }])
         .select()
         .single();

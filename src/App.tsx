@@ -1,5 +1,7 @@
 ﻿import { useState } from 'react';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { AuthProvider, useAuth } from './lib/contexts/AuthContext';
+import { DataProvider } from './lib/contexts/DataContext';
 import SplashScreen from './components/Onboarding/SplashScreen';
 import LanguageSelection from './components/Onboarding/LanguageSelection';
 import LoginRegistration from './components/Auth/LoginRegistration';
@@ -27,10 +29,11 @@ import { supabase } from './lib/supabase';
 // Removed mockData imports
 import { User, Produce, Bid } from './types';
 
-function App() {
+function AppContent() {
   const [appState, setAppState] = useState<'splash' | 'language' | 'auth' | 'main'>('splash');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  const { user: currentUser, isAuthenticated, isLoading, login, logout } = useAuth();
 
   // States
   const [produces, setProduces] = useState<Produce[]>([]); // Leaving for legacy components
@@ -48,39 +51,14 @@ function App() {
     setAppState('auth');
   };
 
-  // UPDATED: Now accepts real userId from Supabase Auth and fetches profile
   const handleLogin = async (userType: 'farmer' | 'trader' | 'admin', userId?: string) => {
-    let userData: any = {
-      id: userId || crypto.randomUUID(),
-      type: userType,
-      name: `${userType.charAt(0).toUpperCase() + userType.slice(1)} User`,
-      location: 'India',
-      verified: true,
-      phone: ''
-    };
-
-    if (userId) {
-      // Fetch actual user profile from our public.users table
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (data) {
-        userData.name = data.full_name || userData.name;
-        userData.phone = data.phone || '';
-      }
-    }
-
-    setCurrentUser(userData);
+    // We use userId as phone since LoginRegistration passes phone there
+    await login(userId || '9999999999', userType);
     setAppState('main');
   };
 
   const handleLogout = async () => {
-    // If using real Supabase auth:
-    await supabase.auth.signOut();
-    setCurrentUser(null);
+    await logout();
     setAppState('auth');
     setActiveTab('dashboard'); // Reset tab state on logout
   };
@@ -290,7 +268,7 @@ function App() {
   };
 
   return (
-    <LanguageProvider>
+    <>
       {appState === 'language' && (
         <LanguageSelection onContinue={handleLanguageContinue} />
       )}
@@ -328,11 +306,23 @@ function App() {
         </div>
       )}
 
-      {!currentUser && appState === 'main' && (
+      {isLoading && appState === 'main' && (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <LanguageProvider>
+      <AuthProvider>
+        <DataProvider>
+          <AppContent />
+        </DataProvider>
+      </AuthProvider>
     </LanguageProvider>
   );
 }

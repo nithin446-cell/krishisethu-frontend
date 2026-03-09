@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Camera, MapPin, Calendar, Package, ArrowLeft, Check, Upload, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 
 interface EnhancedAddProduceProps {
   onSubmit: (produceData: any) => void;
@@ -80,7 +81,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
     }, 2000);
   };
 
-  // 👇 REWRITTEN FOR DIRECT SUPABASE UPLOAD 
+  // 👇 REWRITTEN TO USE BACKEND API FOR RLS COMPLIANCE
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -93,62 +94,38 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
     setError(null);
 
     try {
-      // 1. First insert the crop listing to get an ID
-      const { data: listingData, error: listingError } = await supabase
-        .from('crop_listings')
-        .insert([{
-          farmer_id: farmerId,
-          variety: formData.variety ? formData.variety : formData.name, // Use variety if provided, else crop name
-          quantity: formData.quantity,
-          unit: formData.unit,
-          current_price: Number(formData.expectedPrice),
-          location: formData.location,
-          status: 'active' // Ensure it's active so it shows up
-        }])
-        .select()
-        .single();
+      // Create FormData to handle both crop JSON and image files
+      const uploadData = new FormData();
 
-      if (listingError) throw listingError;
+      // Append strictly text fields
+      uploadData.append('farmer_id', farmerId);
+      uploadData.append('crop_name', formData.name); // Using crop_name to match backend expectations
+      uploadData.append('variety', formData.variety ? formData.variety : formData.name);
+      uploadData.append('quantity', formData.quantity.toString());
+      uploadData.append('unit', formData.unit);
+      uploadData.append('base_price', formData.expectedPrice.toString()); // Using base_price to match backend
+      uploadData.append('location', formData.location);
+      uploadData.append('status', 'active');
 
-      const listingId = listingData.id;
-      const uploadedImageUrls: string[] = [];
-
-      // 2. Upload images to Supabase Storage if any exist
-      if (imageFiles.length > 0) {
-        for (const file of imageFiles) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Math.random()}.${fileExt}`;
-          const filePath = `${farmerId}/${listingId}/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('crop_pictures') // FIXED THE BUCKET NAME HERE
-            .upload(filePath, file);
-
-          if (uploadError) throw uploadError;
-
-          // Get the public URL for the image
-          const { data: publicUrlData } = supabase.storage
-            .from('crop_pictures') // FIXED THE BUCKET NAME HERE
-            .getPublicUrl(filePath);
-
-          uploadedImageUrls.push(publicUrlData.publicUrl);
-        }
-
-        // 3. Insert into crop_pictures table linking to the new listing
-        const pictureInserts = uploadedImageUrls.map(url => ({
-          listing_id: listingId,
-          image_url: url
-        }));
-
-        const { error: picError } = await supabase
-          .from('crop_pictures')
-          .insert(pictureInserts);
-
-        if (picError) throw picError;
+      if (formData.description) {
+        uploadData.append('description', formData.description);
       }
 
+      // Append image files
+      if (imageFiles.length > 0) {
+        imageFiles.forEach(file => {
+          uploadData.append('images', file);
+        });
+      }
+
+      // Call the authenticated API wrapper
+      // We pass `true` as the second argument to indicate it's FormData (multipart/form-data)
+      const result = await api.listProduce(uploadData, true);
+
       alert('Produce and images uploaded successfully!');
-      onSubmit(listingData); // Pass the result up
+
+      // Pass the created listing data up to the parent component
+      onSubmit(result.data || formData);
       onBack(); // Return to dashboard
 
     } catch (err: any) {
@@ -158,7 +135,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
       setIsSubmitting(false);
     }
   };
-  // 👆 END SUPABASE REWRITE
+  // 👆 END API REWRITE
 
   const isFormValid = () => {
     return formData.name && formData.quantity && formData.expectedPrice && formData.location;

@@ -3,36 +3,24 @@ import { Package, IndianRupee as Rupee, CheckCircle, Clock, Loader2 } from 'luci
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
 
-export const FarmerDashboard = ({ farmerId }: { farmerId: string }) => {
+const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
   const [myListings, setMyListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // 1. Fetch live listings & bids directly from Supabase (grouped by listing with nested bids)
+  // 1. Fetch live listings & bids via Backend API
   const fetchListings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('crop_listings')
-        .select(`
-          *,
-          bids (
-            id,
-            trader_id,
-            amount,
-            quantity,
-            status,
-            created_at,
-            users:trader_id (full_name)
-          )
-        `)
-        .eq('farmer_id', farmerId)
-        .in('status', ['active', 'sold'])
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setMyListings(data || []);
+      // api.ts now returns the clean array directly!
+      const listings = await api.getFarmerListings(farmerId);
+      
+      // CRITICAL FIX: Ensure we are setting the array directly
+      // Fallback to listings.data just in case the backend format shifts
+      setMyListings(Array.isArray(listings) ? listings : (listings?.data || []));
+      
     } catch (error: any) {
       console.error("Error fetching listings:", error.message);
+      alert("Failed to load dashboard: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -52,15 +40,13 @@ export const FarmerDashboard = ({ farmerId }: { farmerId: string }) => {
     }
   }, [farmerId]);
 
-  // 2. Handle Accepting a Bid via PostgreSQL RPC
+  // 2. Handle Accepting a Bid via Backend API
   const handleAcceptBid = async (bidId: string, listingId: string) => {
     if (!window.confirm("Accept this bid? This will finalize the deal and reject other offers.")) return;
 
     setActionLoading(bidId);
     try {
-      // Call the new Express API endpoint to accept the bid
       await api.acceptBid(bidId, listingId);
-
       alert("Transaction secured! Order created successfully.");
       await fetchListings(); // Refresh UI to reflect 'sold' status
     } catch (error: any) {
@@ -81,8 +67,6 @@ export const FarmerDashboard = ({ farmerId }: { farmerId: string }) => {
 
   return (
     <div className="p-4 space-y-6 pb-24">
-      {/* Top Stats - Optional: Add your existing UI here */}
-
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4">आपकी फसलें और बोलियां / Your Active Listings</h3>
 
@@ -97,7 +81,7 @@ export const FarmerDashboard = ({ farmerId }: { farmerId: string }) => {
               <div key={listing.id} className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h4 className="font-bold text-lg text-gray-800">{listing.variety || 'Unknown Crop'}</h4>
+                    <h4 className="font-bold text-lg text-gray-800">{listing.variety || listing.crop_name || 'Unknown Crop'}</h4>
                     <p className="text-sm text-gray-600">Base Price: ₹{listing.current_price}</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-700`}>
@@ -156,4 +140,4 @@ export const FarmerDashboard = ({ farmerId }: { farmerId: string }) => {
   );
 };
 
-export default FarmerDashboard;
+export default EnhancedDashboard;

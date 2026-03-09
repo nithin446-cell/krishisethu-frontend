@@ -200,7 +200,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                   {getStatusIcon(transaction.status)}
                   <div>
                     <p className="font-medium text-gray-800">Deal #{transaction.id.slice(0, 8)}</p>
-                    <p className="text-sm text-gray-600">₹{transaction.amount.toLocaleString()}</p>
+                    <p className="text-sm text-gray-600">₹{(transaction.final_amount || transaction.amount || 0).toLocaleString()}</p>
                   </div>
                 </div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(transaction.status)}`}>
@@ -283,7 +283,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
         <div className="space-y-3">
           {availableProduce.slice(0, 3).map((produce) => (
             <div key={produce.id} className="flex items-center space-x-4 p-3 border rounded-lg">
-              <img src={produce.images[0]} alt={produce.name} className="w-12 h-12 rounded-lg object-cover" />
+              <img src={produce.images?.[0] || 'https://via.placeholder.com/150'} alt={produce.name} className="w-12 h-12 rounded-lg object-cover" />
               <div className="flex-1">
                 <p className="font-medium text-gray-800">{produce.name}</p>
                 <p className="text-xs text-gray-500">{produce.location}</p>

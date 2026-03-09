@@ -67,7 +67,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, adminId }) 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: async (results) => {
+      complete: async (results: { data: any[]; }) => {
         try {
           const batchId = `BATCH-${Date.now()}`;
 
@@ -105,7 +105,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, adminId }) 
           if (fileInputRef.current) fileInputRef.current.value = '';
         }
       },
-      error: (error) => {
+      error: (error: { message: string; }) => {
         alert("Parsing Error: " + error.message);
         setIsUploading(false);
       }

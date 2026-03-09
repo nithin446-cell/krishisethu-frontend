@@ -7,10 +7,11 @@ interface AuthContextType {
     userRole: 'farmer' | 'trader' | 'admin' | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    login: (phone: string, role: 'farmer' | 'trader' | 'admin') => Promise<void>;
+    login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     signup: (data: any) => Promise<void>;
     refreshUser: () => Promise<void>;
+    resetPassword: (email: string) => Promise<void>; // Added reset password to interface
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,8 +30,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const savedRole = localStorage.getItem('user_role') as 'farmer' | 'trader' | 'admin' | null;
 
                 if (savedUserId && savedRole) {
-                    // Attempt to fetch profile if we have local storage session
-                    // In a real app this would also check supabase.auth.getSession()
                     const { data, error } = await supabase
                         .from('users')
                         .select('*')
@@ -74,59 +73,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         restoreSession();
     }, []);
 
-    const login = async (phone: string, role: 'farmer' | 'trader' | 'admin') => {
+    const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
-            // Normalize phone: strip spaces, ensure it starts with a digit for matching
-            const normalizedPhone = phone.trim();
+            // 1. Authenticate securely with Supabase Auth
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
 
-            // 1. Try to find the existing user in the DB by phone
-            const { data: existingUser, error: fetchError } = await supabase
+            if (authError) throw authError;
+            if (!authData.session) throw new Error("No session returned from Supabase.");
+
+            const userId = authData.user.id;
+
+            // 2. Fetch the user's full profile from your public 'users' table
+            const { data: dbUser, error: fetchError } = await supabase
                 .from('users')
                 .select('*')
-                .eq('phone', normalizedPhone)
-                .maybeSingle();
+                .eq('id', userId)
+                .single();
 
-            let dbUser = existingUser;
-
-            // 2. If no user found, INSERT a new row so they get a permanent ID
-            if (!dbUser) {
-                const userName = `${role.charAt(0).toUpperCase() + role.slice(1)} User`;
-                const { data: newUser, error: insertError } = await supabase
-                    .from('users')
-                    .insert([{ phone: normalizedPhone, role, full_name: userName }])
-                    .select()
-                    .single();
-
-                if (insertError) {
-                    console.error('Failed to create user:', insertError.message);
-                    throw new Error('Could not create user account. ' + insertError.message);
-                }
-                dbUser = newUser;
+            if (fetchError || !dbUser) {
+                console.error("Profile fetch error:", fetchError);
+                throw new Error("User authenticated, but profile not found in database.");
             }
 
-            // 3. Build the User object from real DB data
+            // 3. Build the User object for the frontend state
             const userData: User = {
-                id: dbUser.id,                    // REAL UUID from Supabase — consistent across sessions
-                type: (dbUser.role || role) as 'farmer' | 'trader' | 'admin',
-                name: dbUser.full_name || `${role.charAt(0).toUpperCase() + role.slice(1)} User`,
+                id: dbUser.id,
+                type: dbUser.role as 'farmer' | 'trader' | 'admin',
+                name: dbUser.full_name || `${dbUser.role.charAt(0).toUpperCase() + dbUser.role.slice(1)} User`,
                 location: dbUser.location || 'India',
                 verified: true,
-                phone: dbUser.phone || normalizedPhone
+                phone: dbUser.phone || ''
             };
 
-            // 4. Persist session to localStorage
+            // 4. Persist session details to localStorage
             localStorage.setItem('auth_user_id', dbUser.id);
-            localStorage.setItem('auth_user_phone', normalizedPhone);
+            localStorage.setItem('auth_user_phone', dbUser.phone || '');
             localStorage.setItem('auth_user_name', userData.name);
             localStorage.setItem('user_role', userData.type);
+            
+            // CRITICAL: Store the Supabase token so API calls can use it in the Authorization header
+            localStorage.setItem('supabase_token', authData.session.access_token);
 
             setUser(userData);
             setUserRole(userData.type);
             setIsAuthenticated(true);
         } catch (error) {
             console.error('Login error:', error);
-            throw error;
+            throw error; // Re-throw to be caught by the UI (e.g., to show an error message)
         } finally {
             setIsLoading(false);
         }
@@ -135,10 +132,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const logout = async () => {
         setIsLoading(true);
         try {
-            // await supabase.auth.signOut();
+            // Sign out of Supabase Auth to invalidate JWT token
+            await supabase.auth.signOut();
 
-            // Keep profile data for UX, but clear authentication
+            // Clear authentication data from local storage
             localStorage.removeItem('auth_user_id');
+            localStorage.removeItem('auth_user_phone');
+            localStorage.removeItem('auth_user_name');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('supabase_token'); // Clear backend token
 
             setUser(null);
             setUserRole(null);
@@ -151,7 +153,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signup = async (data: any) => {
-        // Implement signup logic
+        setIsLoading(true);
+        try {
+            // Point to your backend route
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${apiUrl}/api/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Signup failed');
+            }
+            
+            // Build the User object from the returned DB data
+            const dbUser = result.user;
+            const userData: User = {
+                id: dbUser.id,
+                type: dbUser.role as 'farmer' | 'trader' | 'admin',
+                name: dbUser.full_name || `${dbUser.role.charAt(0).toUpperCase() + dbUser.role.slice(1)} User`,
+                location: dbUser.location || 'India',
+                verified: true,
+                phone: dbUser.phone || data.phone
+            };
+
+            // Persist session to localStorage
+            localStorage.setItem('auth_user_id', dbUser.id);
+            localStorage.setItem('auth_user_phone', dbUser.phone || '');
+            localStorage.setItem('auth_user_name', userData.name);
+            localStorage.setItem('user_role', userData.type);
+            
+            // Store the session token so API calls can use it in the Authorization header
+            if (result.session) {
+                 localStorage.setItem('supabase_token', result.session.access_token);
+            }
+
+            setUser(userData);
+            setUserRole(userData.type);
+            setIsAuthenticated(true);
+            
+        } catch (error) {
+            console.error('Signup error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const refreshUser = async () => {
@@ -177,6 +226,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    // New resetPassword function
+    const resetPassword = async (email: string) => {
+        setIsLoading(true);
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/`, 
+            });
+            if (error) throw error;
+        } catch (error) {
+            console.error('Password reset error:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -186,7 +251,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             login,
             logout,
             signup,
-            refreshUser
+            refreshUser,
+            resetPassword // Added to provider
         }}>
             {children}
         </AuthContext.Provider>

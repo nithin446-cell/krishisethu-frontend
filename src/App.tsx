@@ -33,7 +33,7 @@ function AppContent() {
   const [appState, setAppState] = useState<'splash' | 'language' | 'auth' | 'main'>('splash');
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  const { user: currentUser, isAuthenticated, isLoading, login, logout } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading, logout } = useAuth();
 
   // States
   const [produces, setProduces] = useState<Produce[]>([]); // Leaving for legacy components
@@ -51,9 +51,8 @@ function AppContent() {
     setAppState('auth');
   };
 
-  const handleLogin = async (userType: 'farmer' | 'trader' | 'admin', userId?: string) => {
-    // We use userId as phone since LoginRegistration passes phone there
-    await login(userId || '9999999999', userType);
+  // SIMPLIFIED: Authentication is handled inside LoginRegistration now
+  const handleAuthSuccess = () => {
     setAppState('main');
   };
 
@@ -273,7 +272,8 @@ function AppContent() {
         <LanguageSelection onContinue={handleLanguageContinue} />
       )}
 
-      {appState === 'auth' && <LoginRegistration onLogin={handleLogin} />}
+      {/* Change onLogin={handleLogin} to onLogin={handleAuthSuccess} */}
+      {appState === 'auth' && <LoginRegistration onLogin={handleAuthSuccess} />}
 
       {appState === 'main' && currentUser && (
         <div className="min-h-screen bg-gray-50">

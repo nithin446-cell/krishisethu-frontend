@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Package, IndianRupee as Rupee, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { Package, CheckCircle, Loader2, IndianRupee as Rupee, AlertTriangle, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
+import EnhancedChatInterface from '../chat/EnhancedChatInterface';
 
 const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
   const [myListings, setMyListings] = useState<any[]>([]);
+  const [farmerOrders, setFarmerOrders] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // 1. Fetch live listings & bids via Backend API
-  const fetchListings = async () => {
+  // Active Chat State
+  const [activeChat, setActiveChat] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
+
+  const fetchDashboardData = async () => {
     try {
-      // api.ts now returns the clean array directly!
       const listings = await api.getFarmerListings(farmerId);
-      
-      // CRITICAL FIX: Ensure we are setting the array directly
-      // Fallback to listings.data just in case the backend format shifts
       setMyListings(Array.isArray(listings) ? listings : (listings?.data || []));
-      
+
+      const orders = await api.getFarmerOrders(farmerId);
+      setFarmerOrders(Array.isArray(orders) ? orders : (orders?.data || []));
     } catch (error: any) {
-      console.error("Error fetching listings:", error.message);
-      alert("Failed to load dashboard: " + error.message);
+      console.error("Error fetching dashboard data:", error.message);
     } finally {
       setLoading(false);
     }
@@ -28,19 +29,17 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
 
   useEffect(() => {
     if (farmerId) {
-      fetchListings();
+      fetchDashboardData();
 
-      const channel = supabase.channel('farmer_bids_channel')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bids' }, () => {
-          fetchListings(); // Refresh when a new bid is placed
-        })
+      const channel = supabase.channel('farmer_updates_channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bids' }, () => fetchDashboardData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `farmer_id=eq.${farmerId}` }, () => fetchDashboardData())
         .subscribe();
 
       return () => { supabase.removeChannel(channel); };
     }
   }, [farmerId]);
 
-  // 2. Handle Accepting a Bid via Backend API
   const handleAcceptBid = async (bidId: string, listingId: string) => {
     if (!window.confirm("Accept this bid? This will finalize the deal and reject other offers.")) return;
 
@@ -48,9 +47,28 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
     try {
       await api.acceptBid(bidId, listingId);
       alert("Transaction secured! Order created successfully.");
-      await fetchListings(); // Refresh UI to reflect 'sold' status
+      await fetchDashboardData(); 
     } catch (error: any) {
       alert("Error: " + error.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePaymentConfirmation = async (orderId: string, status: 'paid' | 'not_paid') => {
+    const message = status === 'paid' 
+      ? "Confirm that you have securely received the payment in your bank account?" 
+      : "Report this payment as NOT received? This will flag the order for dispute.";
+      
+    if (!window.confirm(message)) return;
+
+    setActionLoading(orderId);
+    try {
+      await api.confirmFarmerPayment(orderId, status);
+      alert(`Payment status successfully marked as: ${status === 'paid' ? 'PAID' : 'NOT PAID'}`);
+      await fetchDashboardData(); 
+    } catch (error: any) {
+      alert("Error confirming payment: " + error.message);
     } finally {
       setActionLoading(null);
     }
@@ -60,15 +78,15 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-gray-500">
         <Loader2 className="animate-spin mb-2" size={32} />
-        <p>Loading your listings...</p>
+        <p>Loading your dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-6 pb-24">
+    <div className="p-4 space-y-6 pb-24 relative">
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">आपकी फसलें और बोलियां / Your Active Listings</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">आपकी फसलें और बोलियां / Active Listings & Bids</h3>
 
         <div className="space-y-4">
           {myListings.length === 0 ? (
@@ -84,16 +102,11 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
                     <h4 className="font-bold text-lg text-gray-800">{listing.variety || listing.crop_name || 'Unknown Crop'}</h4>
                     <p className="text-sm text-gray-600">Base Price: ₹{listing.current_price}</p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-700`}>
-                    सक्रिय / Active
-                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-700">सक्रिय / Active</span>
                 </div>
 
-                {/* Bids Section */}
                 <div className="mt-4 border-t pt-3">
-                  <h5 className="text-sm font-semibold text-gray-700 mb-2">
-                    प्राप्त बोलियां / Received Bids ({listing.bids?.length || 0})
-                  </h5>
+                  <h5 className="text-sm font-semibold text-gray-700 mb-2">प्राप्त बोलियां / Received Bids ({listing.bids?.length || 0})</h5>
                   <div className="space-y-2">
                     {listing.bids?.length === 0 ? (
                       <p className="text-xs text-gray-400 italic">No bids received yet.</p>
@@ -102,25 +115,16 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
                         {listing.bids?.map((bid: any) => (
                           <div key={bid.id} className="flex justify-between items-center bg-white p-2 border rounded shadow-sm">
                             <div>
-                              <p className="font-semibold text-sm text-gray-800">
-                                {bid.users?.full_name || 'Trader'}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                ₹{bid.amount} for {bid.quantity} {listing.unit}
-                              </p>
+                              <p className="font-semibold text-sm text-gray-800">{bid.users?.full_name || 'Trader'}</p>
+                              <p className="text-xs text-gray-500">₹{bid.amount} for {bid.quantity} {listing.unit}</p>
                             </div>
                             <div>
                               {bid.status === 'pending' ? (
-                                <button
-                                  disabled={actionLoading === bid.id}
-                                  onClick={() => handleAcceptBid(bid.id, listing.id)}
-                                  className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 disabled:opacity-50"
-                                >
+                                <button disabled={actionLoading === bid.id} onClick={() => handleAcceptBid(bid.id, listing.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700">
                                   {actionLoading === bid.id ? 'Accepting...' : 'Accept'}
                                 </button>
                               ) : (
-                                <span className={`px-2 py-1 text-xs font-bold rounded ${bid.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                  }`}>
+                                <span className={`px-2 py-1 text-xs font-bold rounded ${bid.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                   {bid.status.toUpperCase()}
                                 </span>
                               )}
@@ -136,6 +140,78 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
           )}
         </div>
       </div>
+
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">ऑर्डर और भुगतान / Orders & Payments</h3>
+        
+        <div className="space-y-4">
+          {farmerOrders.length === 0 ? (
+            <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed">
+              <Rupee className="mx-auto text-gray-400 mb-2" size={32} />
+              <p className="text-gray-500 text-sm">अभी तक कोई पक्का ऑर्डर नहीं / No confirmed orders yet.</p>
+            </div>
+          ) : (
+            farmerOrders.map((order) => (
+              <div key={order.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                
+                <div className="flex justify-between items-start mb-3 border-b pb-3">
+                  <div>
+                    <h4 className="font-bold text-gray-800">Crop: {order.crop_listings?.variety || 'Unknown'}</h4>
+                    <p className="text-sm font-semibold text-green-700">Amount: ₹{order.final_amount}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${order.payment_status === 'paid' ? 'bg-green-100 text-green-700' : order.payment_status === 'processing' ? 'bg-blue-100 text-blue-700' : order.payment_status === 'not_paid' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {order.payment_status === 'yet_to_paid' ? 'Yet To Pay' : order.payment_status.replace('_', ' ')}
+                  </span>
+                </div>
+
+                {/* TRADER INFO & CHAT BUTTON */}
+                <div className="text-sm text-gray-600 mb-4">
+                  <p><strong>Trader:</strong> {order.trader?.full_name || order.trader?.business_name}</p>
+                  <p><strong>Phone:</strong> {order.trader?.phone || 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-1">Order Date: {new Date(order.created_at).toLocaleDateString()}</p>
+                  
+                  {/* 💬 CHAT BUTTON */}
+                  <button 
+                    onClick={() => setActiveChat({
+                      orderId: order.id,
+                      otherUserId: order.trader_id,
+                      otherUserName: order.trader?.full_name || order.trader?.business_name || 'Trader'
+                    })} 
+                    className="mt-3 flex items-center py-1.5 px-3 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-200"
+                  >
+                    <MessageSquare size={14} className="mr-1" /> Message Trader
+                  </button>
+                </div>
+
+                {order.payment_status === 'processing' && (
+                  <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mt-2">
+                    <p className="text-sm text-blue-800 font-semibold mb-2 text-center">
+                      The Trader has completed the Razorpay checkout! Please confirm receipt.
+                    </p>
+                    <div className="flex space-x-2">
+                      <button onClick={() => handlePaymentConfirmation(order.id, 'paid')} disabled={actionLoading === order.id} className="flex-1 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 flex justify-center items-center text-sm">
+                        <CheckCircle size={16} className="mr-1" /> Yes, Received
+                      </button>
+                      <button onClick={() => handlePaymentConfirmation(order.id, 'not_paid')} disabled={actionLoading === order.id} className="flex-1 py-2 bg-red-100 text-red-700 rounded font-medium hover:bg-red-200 flex justify-center items-center text-sm">
+                        <AlertTriangle size={16} className="mr-1" /> Not Received
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* RENDER ACTIVE CHAT COMPONENT */}
+      {activeChat && (
+        <EnhancedChatInterface 
+          orderId={activeChat.orderId} currentUserId={farmerId} 
+          otherUserId={activeChat.otherUserId} otherUserName={activeChat.otherUserName} 
+          onClose={() => setActiveChat(null)} 
+        />
+      )}
     </div>
   );
 };

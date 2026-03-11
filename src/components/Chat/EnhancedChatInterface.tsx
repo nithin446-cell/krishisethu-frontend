@@ -1,63 +1,87 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, 
-  Phone, 
-  MoreVertical, 
-  ArrowLeft, 
-  Camera, 
-  Paperclip,
-  Smile,
-  MapPin,
-  Shield
-} from 'lucide-react';
-import { Message, User } from '../../types';
+import { Send, Phone, ArrowLeft, Paperclip, Smile, Shield, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 
-interface EnhancedChatInterfaceProps {
-  currentUser: User;
-  otherUser: User;
-  messages: Message[];
-  onSendMessage: (content: string) => void;
-  onBack?: () => void;
+interface ChatProps {
+  orderId: string;
+  currentUserId: string;
+  otherUserId: string;
+  otherUserName: string;
+  onClose: () => void;
 }
 
-const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
-  currentUser,
-  otherUser,
-  messages,
-  onSendMessage,
-  onBack
+const EnhancedChatInterface: React.FC<ChatProps> = ({ 
+  orderId, 
+  currentUserId, 
+  otherUserId, 
+  otherUserName, 
+  onClose 
 }) => {
+  const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // CRASH-PROOF SAFETY: Ensure we always have a string for the name
+  const safeName = otherUserName || 'User';
 
+  // --- 1. FETCH LIVE MESSAGES ---
   useEffect(() => {
-    scrollToBottom();
+    const fetchMessages = async () => {
+      try {
+        const data = await api.getMessages(orderId);
+        setMessages(data || []);
+      } catch (error) {
+        console.error("Failed to load messages", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMessages();
+
+    // Listen for incoming live messages via WebSockets!
+    const channel = supabase.channel(`chat_${orderId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` }, (payload) => {
+        setMessages(prev => [...prev, payload.new]);
+      }).subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [orderId]);
+
+  // Scroll to bottom when new message arrives
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newMessage.trim()) {
-      onSendMessage(newMessage.trim());
-      setNewMessage('');
-      setShowQuickReplies(false);
+  // --- 2. SEND MESSAGE ---
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newMessage.trim()) return;
+
+    const content = newMessage.trim();
+    setNewMessage('');
+    setShowQuickReplies(false);
+    
+    try {
+      await api.sendMessage(orderId, otherUserId, content);
+    } catch (error) {
+      console.error("Failed to send message", error);
     }
   };
 
-  const handleQuickReply = (reply: string) => {
-    onSendMessage(reply);
+  const handleQuickReply = async (reply: string) => {
     setShowQuickReplies(false);
+    try {
+      await api.sendMessage(orderId, otherUserId, reply);
+    } catch (error) {
+      console.error("Failed to send message", error);
+    }
   };
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('en-IN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return new Date(timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   };
 
   const quickReplies = [
@@ -70,92 +94,67 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    // Floating Window Wrapper
+    <div className="fixed bottom-4 right-4 w-[350px] md:w-[400px] h-[550px] bg-gray-50 rounded-2xl shadow-2xl border border-gray-200 flex flex-col z-[100] overflow-hidden">
+      
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4">
+      <div className="bg-white border-b border-gray-200 p-4 shrink-0">
         <div className="flex items-center space-x-3">
-          {onBack && (
-            <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-full">
-              <ArrowLeft size={20} className="text-gray-600" />
-            </button>
-          )}
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+            <ArrowLeft size={20} className="text-gray-600" />
+          </button>
           
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center shrink-0">
             <span className="text-white font-semibold text-lg">
-              {otherUser.name.charAt(0).toUpperCase()}
+              {safeName.charAt(0).toUpperCase()}
             </span>
           </div>
           
-          <div className="flex-1">
+          <div className="flex-1 overflow-hidden">
             <div className="flex items-center space-x-2">
-              <h3 className="font-semibold text-gray-800">{otherUser.name}</h3>
-              {otherUser.verified && (
-                <div className="flex items-center space-x-1 bg-green-100 px-2 py-1 rounded-full">
-                  <Shield size={12} className="text-green-600" />
-                  <span className="text-xs text-green-700 font-medium">Verified</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center space-x-1 text-sm text-gray-600">
-              <MapPin size={12} />
-              <span>{otherUser.location}</span>
+              <h3 className="font-semibold text-gray-800 truncate">{safeName}</h3>
+              <div className="flex items-center space-x-1 bg-green-100 px-2 py-0.5 rounded-full shrink-0">
+                <Shield size={10} className="text-green-600" />
+                <span className="text-[10px] text-green-700 font-medium">Verified</span>
+              </div>
             </div>
             <p className="text-xs text-green-600">ऑनलाइन / Online</p>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <button className="p-2 hover:bg-gray-100 rounded-full">
-              <Phone size={20} className="text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-full">
-              <MoreVertical size={20} className="text-gray-600" />
-            </button>
+          <div className="flex items-center space-x-1 shrink-0">
+            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors"><Phone size={18} className="text-gray-600" /></button>
           </div>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        {loading ? (
+          <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-green-600" /></div>
+        ) : messages.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <span className="text-2xl">💬</span>
             </div>
-            <p className="text-gray-500 font-medium">बातचीत शुरू करें</p>
-            <p className="text-sm text-gray-400">Start conversation</p>
+            <p className="text-gray-500 font-medium text-sm">बातचीत शुरू करें / Start Conversation</p>
             <button
               onClick={() => setShowQuickReplies(true)}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="mt-3 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors shadow-sm"
             >
               त्वरित संदेश / Quick Message
             </button>
           </div>
         ) : (
           messages.map((message) => {
-            const isOwn = message.senderId === currentUser.id;
+            const isOwn = message.sender_id === currentUserId;
             return (
-              <div
-                key={message.id}
-                className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className="max-w-xs lg:max-w-md">
-                  <div
-                    className={`px-4 py-3 rounded-2xl shadow-sm ${
-                      isOwn
-                        ? 'bg-green-600 text-white rounded-br-md'
-                        : 'bg-white text-gray-800 rounded-bl-md border border-gray-200'
-                    }`}
-                  >
+              <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                <div className="max-w-[85%]">
+                  <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm ${isOwn ? 'bg-green-600 text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm border border-gray-200'}`}>
                     <p className="break-words">{message.content}</p>
                   </div>
                   <div className={`flex items-center mt-1 space-x-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                    <p className="text-xs text-gray-500">{formatTime(message.timestamp)}</p>
-                    {isOwn && (
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                        <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
-                      </div>
-                    )}
+                    <p className="text-[10px] text-gray-500">{formatTime(message.created_at)}</p>
                   </div>
                 </div>
               </div>
@@ -167,23 +166,14 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
       {/* Quick Replies */}
       {showQuickReplies && (
-        <div className="bg-white border-t border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-gray-700">त्वरित उत्तर / Quick Replies</p>
-            <button
-              onClick={() => setShowQuickReplies(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
+        <div className="bg-white border-t border-gray-200 p-3 shrink-0 animate-in slide-in-from-bottom-2">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-gray-700">त्वरित उत्तर / Quick Replies</p>
+            <button onClick={() => setShowQuickReplies(false)} className="text-gray-500 hover:text-gray-700 p-1">✕</button>
           </div>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="flex flex-wrap gap-2">
             {quickReplies.map((reply, index) => (
-              <button
-                key={index}
-                onClick={() => handleQuickReply(reply)}
-                className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm transition-colors"
-              >
+              <button key={index} onClick={() => handleQuickReply(reply)} className="text-left px-3 py-1.5 bg-gray-50 hover:bg-green-50 hover:text-green-700 border border-gray-200 hover:border-green-200 rounded-full text-xs transition-colors">
                 {reply}
               </button>
             ))}
@@ -192,22 +182,11 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       )}
 
       {/* Message Input */}
-      <div className="bg-white border-t border-gray-200 p-4">
-        <form onSubmit={handleSend} className="flex items-end space-x-2">
-          <div className="flex space-x-2">
-            <button
-              type="button"
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <Paperclip size={20} />
-            </button>
-            <button
-              type="button"
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <Camera size={20} />
-            </button>
-          </div>
+      <div className="bg-white border-t border-gray-200 p-3 shrink-0">
+        <form onSubmit={handleSend} className="flex items-center space-x-2">
+          <button type="button" className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors">
+            <Paperclip size={18} />
+          </button>
           
           <div className="flex-1 relative">
             <input
@@ -215,30 +194,19 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="संदेश लिखें... / Type message..."
-              className="w-full p-3 pr-10 border border-gray-300 rounded-full focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full pl-4 pr-10 py-2.5 bg-gray-100 text-sm rounded-full focus:ring-2 focus:ring-green-500 focus:bg-white focus:outline-none transition-all"
             />
-            <button
-              type="button"
-              onClick={() => setShowQuickReplies(!showQuickReplies)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-            >
-              <Smile size={20} />
+            <button type="button" onClick={() => setShowQuickReplies(!showQuickReplies)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors">
+              <Smile size={18} />
             </button>
           </div>
           
-          <button
-            type="submit"
-            disabled={!newMessage.trim()}
-            className={`p-3 rounded-full transition-colors ${
-              newMessage.trim()
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            <Send size={20} />
+          <button type="submit" disabled={!newMessage.trim()} className={`p-2.5 rounded-full transition-colors ${newMessage.trim() ? 'bg-green-600 text-white hover:bg-green-700 shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+            <Send size={18} className="ml-0.5" />
           </button>
         </form>
       </div>
+      
     </div>
   );
 };

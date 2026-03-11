@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Package, TrendingUp, Clock, CircleCheck as CheckCircle, Bell, Eye, Star, MapPin, IndianRupee as Rupee, AlertTriangle, CreditCard, ShoppingCart, Wallet, FileText, Phone, Loader2 } from 'lucide-react';
+import { Package, Bell, ShieldAlert, FileText, Loader2 } from 'lucide-react';
 import { Produce } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
-import EnhancedChatInterface from '../chat/EnhancedChatInterface';
+import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -22,45 +22,36 @@ interface TraderDashboardProps {
 
 const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, traderId }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
-
   const [liveTransactions, setLiveTransactions] = useState<any[]>([]);
-  const [myBids, setMyBids] = useState<any[]>([]);
   const [liveProduce, setLiveProduce] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
-
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-
-  // Active Chat State
+  const [verificationStatus, setVerificationStatus] = useState<string>('unverified');
   const [activeChat, setActiveChat] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
 
   const fetchDashboardData = async () => {
     try {
-      const { data: txData, error: txError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          final_amount,
-          status,
-          payment_status,
-          created_at,
-          farmer_id,
-          bids ( quantity ),
-          crop_listings ( variety, location ),
-          farmer:users!farmer_id (full_name)
-        `)
-        .eq('trader_id', traderId)
-        .order('created_at', { ascending: false });
+      const { data: userData } = await supabase.from('users').select('verification_status').eq('id', traderId).single();
+      setVerificationStatus(userData?.verification_status || 'unverified');
 
-      if (txError) throw txError;
-      setLiveTransactions(txData || []);
+      if (userData?.verification_status === 'verified') {
+        const { data: txData, error: txError } = await supabase
+          .from('orders')
+          .select(`
+            id, final_amount, status, payment_status, created_at, farmer_id,
+            bids ( quantity ), crop_listings ( variety, location ),
+            farmer:users!farmer_id (full_name)
+          `)
+          .eq('trader_id', traderId)
+          .order('created_at', { ascending: false });
 
-      const bidsData = await api.getTraderBids(traderId);
-      setMyBids(bidsData || []);
+        if (txError) throw txError;
+        setLiveTransactions(txData || []);
 
-      const marketData = await api.getMarket();
-      setLiveProduce(marketData || []);
+        const marketData = await api.getMarket();
+        setLiveProduce(marketData || []);
+      }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
     } finally {
@@ -71,13 +62,12 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
   useEffect(() => {
     if (traderId) {
       fetchDashboardData();
-
       const channel = supabase.channel('trader_updates_channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `trader_id=eq.${traderId}` }, () => fetchDashboardData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `trader_id=eq.${traderId}` }, () => fetchDashboardData())
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'crop_listings' }, () => fetchDashboardData())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${traderId}` }, () => fetchDashboardData())
         .subscribe();
-
       return () => { supabase.removeChannel(channel); };
     }
   }, [traderId]);
@@ -119,7 +109,6 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
       const rzpWindow = new (window as any).Razorpay(options);
       rzpWindow.on('payment.failed', (response: any) => alert(`Payment failed! Reason: ${response.error.description}`));
       rzpWindow.open();
-
     } catch (error: any) {
       alert("Failed to initialize payment: " + error.message);
     } finally {
@@ -127,8 +116,28 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
     }
   };
 
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
+
+  // 🛑 THE GATEKEEPER LOCKOUT 🛑
+  if (verificationStatus !== 'verified') {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center text-center h-[70vh] bg-gray-50">
+        <ShieldAlert size={64} className={`${verificationStatus === 'pending_verification' ? 'text-yellow-500' : 'text-red-500'} mb-4`} />
+        <h2 className="text-2xl font-bold text-gray-800">Account Verification Required</h2>
+        <p className="mt-2 text-gray-600 max-w-md">
+          {verificationStatus === 'pending_verification' 
+            ? "Your documents are currently being reviewed by an Admin. Market access will open soon." 
+            : "You cannot access marketplace features until your identity is verified. Please navigate to the Profile Tab below to upload your KYC documents."}
+        </p>
+        <div className="mt-8 p-4 bg-white border rounded-xl shadow-sm text-sm text-gray-500 flex flex-col items-center">
+          <FileText size={24} className="mb-2 text-indigo-500" />
+          <p className="font-semibold text-gray-700">Go to the "Profile" Tab below to upload your ID!</p>
+        </div>
+      </div>
+    );
+  }
+
   const activeBids = liveTransactions.filter(t => t.status === 'pending' || t.status === 'deal_accepted').length;
-  const totalProduce = liveProduce.length;
   const pendingPayments = liveTransactions.filter(t => t.status === 'pending_payment' || t.payment_status === 'yet_to_paid').length;
 
   const filteredTransactions = liveTransactions.filter(transaction => {
@@ -164,6 +173,14 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
             <h2 className="text-xl font-bold mb-1">नमस्ते व्यापारी!</h2>
             <p className="text-blue-100 text-sm">Welcome Trader!</p>
           </div>
+          <div className="relative">
+            <Bell size={24} />
+            {(activeBids > 0 || pendingPayments > 0) && (
+              <div className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-xs font-bold">{activeBids + pendingPayments}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -193,7 +210,6 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                   {selectedTransactionId === transaction.id ? 'Hide Details' : 'View Details'}
                 </button>
                 
-                {/* 💬 CHAT BUTTON (Enabled for active deals) */}
                 <button 
                   onClick={() => setActiveChat({
                     orderId: transaction.id,
@@ -232,7 +248,6 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
         </div>
       </div>
 
-      {/* RENDER ACTIVE CHAT COMPONENT */}
       {activeChat && (
         <EnhancedChatInterface 
           orderId={activeChat.orderId} currentUserId={traderId} 

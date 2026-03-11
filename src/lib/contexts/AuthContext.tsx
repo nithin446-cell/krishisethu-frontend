@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             type: data.role || savedRole,
                             name: data.full_name || `${savedRole.charAt(0).toUpperCase() + savedRole.slice(1)} User`,
                             location: data.location || 'India',
-                            verified: data.verified !== undefined ? data.verified : true,
+                            verified: data.verification_status === 'verified',
                             phone: data.phone || ''
                         };
                         setUser(userData);
@@ -72,6 +72,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         restoreSession();
     }, []);
+
+    // Listen for Realtime verification status changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const channel = supabase.channel('auth_user_updates')
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'users', 
+                filter: `id=eq.${user.id}` 
+            }, (payload) => {
+                const updatedUser = payload.new;
+                setUser(prev => prev ? {
+                    ...prev,
+                    name: updatedUser.full_name || prev.name,
+                    phone: updatedUser.phone || prev.phone,
+                    location: updatedUser.location || prev.location,
+                    verified: updatedUser.verification_status === 'verified'
+                } : null);
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [user?.id]);
 
     const login = async (email: string, password: string) => {
         setIsLoading(true);
@@ -105,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 type: dbUser.role as 'farmer' | 'trader' | 'admin',
                 name: dbUser.full_name || `${dbUser.role.charAt(0).toUpperCase() + dbUser.role.slice(1)} User`,
                 location: dbUser.location || 'India',
-                verified: true,
+                verified: dbUser.verification_status === 'verified',
                 phone: dbUser.phone || ''
             };
 
@@ -176,7 +201,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 type: dbUser.role as 'farmer' | 'trader' | 'admin',
                 name: dbUser.full_name || `${dbUser.role.charAt(0).toUpperCase() + dbUser.role.slice(1)} User`,
                 location: dbUser.location || 'India',
-                verified: true,
+                verified: dbUser.verification_status === 'verified',
                 phone: dbUser.phone || data.phone
             };
 
@@ -218,7 +243,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     ...prev,
                     name: data.full_name || prev.name,
                     phone: data.phone || prev.phone,
-                    location: data.location || prev.location
+                    location: data.location || prev.location,
+                    verified: data.verification_status === 'verified'
                 } : null);
             }
         } catch (error) {

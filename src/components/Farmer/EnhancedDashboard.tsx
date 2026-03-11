@@ -1,25 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Package, CheckCircle, Loader2, IndianRupee as Rupee, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Package, CheckCircle, Loader2, IndianRupee as Rupee, AlertTriangle, ShieldAlert, FileText, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
-import EnhancedChatInterface from '../chat/EnhancedChatInterface';
+import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
 
 const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
   const [myListings, setMyListings] = useState<any[]>([]);
   const [farmerOrders, setFarmerOrders] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-
+  const [verificationStatus, setVerificationStatus] = useState<string>('unverified');
+  
   // Active Chat State
   const [activeChat, setActiveChat] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
 
   const fetchDashboardData = async () => {
     try {
-      const listings = await api.getFarmerListings(farmerId);
-      setMyListings(Array.isArray(listings) ? listings : (listings?.data || []));
+      const { data: userData } = await supabase.from('users').select('verification_status').eq('id', farmerId).single();
+      setVerificationStatus(userData?.verification_status || 'unverified');
 
-      const orders = await api.getFarmerOrders(farmerId);
-      setFarmerOrders(Array.isArray(orders) ? orders : (orders?.data || []));
+      if (userData?.verification_status === 'verified') {
+        const listings = await api.getFarmerListings(farmerId);
+        setMyListings(Array.isArray(listings) ? listings : (listings?.data || []));
+
+        const orders = await api.getFarmerOrders(farmerId);
+        setFarmerOrders(Array.isArray(orders) ? orders : (orders?.data || []));
+      }
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error.message);
     } finally {
@@ -34,6 +40,7 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
       const channel = supabase.channel('farmer_updates_channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bids' }, () => fetchDashboardData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `farmer_id=eq.${farmerId}` }, () => fetchDashboardData())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${farmerId}` }, () => fetchDashboardData())
         .subscribe();
 
       return () => { supabase.removeChannel(channel); };
@@ -74,11 +81,23 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
     }
   };
 
-  if (loading) {
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-green-600" size={40} /></div>;
+
+  // 🛑 THE GATEKEEPER LOCKOUT 🛑
+  if (verificationStatus !== 'verified') {
     return (
-      <div className="flex flex-col items-center justify-center p-20 text-gray-500">
-        <Loader2 className="animate-spin mb-2" size={32} />
-        <p>Loading your dashboard...</p>
+      <div className="p-6 flex flex-col items-center justify-center text-center h-[70vh] bg-gray-50">
+        <ShieldAlert size={64} className={`${verificationStatus === 'pending_verification' ? 'text-yellow-500' : 'text-red-500'} mb-4`} />
+        <h2 className="text-2xl font-bold text-gray-800">Account Verification Required</h2>
+        <p className="mt-2 text-gray-600 max-w-md">
+          {verificationStatus === 'pending_verification' 
+            ? "Your documents are currently being reviewed by an Admin. You will be able to access the marketplace once approved." 
+            : "You cannot access marketplace features until your identity is verified. Please navigate to the Profile Tab below to upload your KYC documents."}
+        </p>
+        <div className="mt-8 p-4 bg-white border rounded-xl shadow-sm text-sm text-gray-500 flex flex-col items-center">
+          <FileText size={24} className="mb-2 text-indigo-500" />
+          <p className="font-semibold text-gray-700">Go to the "Profile" Tab below to upload your ID!</p>
+        </div>
       </div>
     );
   }
@@ -87,7 +106,6 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
     <div className="p-4 space-y-6 pb-24 relative">
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4">आपकी फसलें और बोलियां / Active Listings & Bids</h3>
-
         <div className="space-y-4">
           {myListings.length === 0 ? (
             <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed">
@@ -143,7 +161,6 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
 
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4">ऑर्डर और भुगतान / Orders & Payments</h3>
-        
         <div className="space-y-4">
           {farmerOrders.length === 0 ? (
             <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed">
@@ -153,7 +170,6 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
           ) : (
             farmerOrders.map((order) => (
               <div key={order.id} className="border rounded-lg p-4 bg-white shadow-sm">
-                
                 <div className="flex justify-between items-start mb-3 border-b pb-3">
                   <div>
                     <h4 className="font-bold text-gray-800">Crop: {order.crop_listings?.variety || 'Unknown'}</h4>
@@ -164,13 +180,11 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
                   </span>
                 </div>
 
-                {/* TRADER INFO & CHAT BUTTON */}
                 <div className="text-sm text-gray-600 mb-4">
                   <p><strong>Trader:</strong> {order.trader?.full_name || order.trader?.business_name}</p>
                   <p><strong>Phone:</strong> {order.trader?.phone || 'N/A'}</p>
                   <p className="text-xs text-gray-400 mt-1">Order Date: {new Date(order.created_at).toLocaleDateString()}</p>
                   
-                  {/* 💬 CHAT BUTTON */}
                   <button 
                     onClick={() => setActiveChat({
                       orderId: order.id,
@@ -204,7 +218,6 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
         </div>
       </div>
 
-      {/* RENDER ACTIVE CHAT COMPONENT */}
       {activeChat && (
         <EnhancedChatInterface 
           orderId={activeChat.orderId} currentUserId={farmerId} 

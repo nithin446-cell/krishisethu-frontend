@@ -140,8 +140,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshAdminData = async () => {
         setIsRefreshing(true);
         try {
-            const orders = await api.getAdminOrders().catch(() => []);
-            const bids = await api.getAdminBids().catch(() => []);
+            const dashboard = await api.getAdminDashboard().catch(() => ({}));
+            const orders = dashboard.orders ?? [];
+            const bids = dashboard.bids ?? [];
 
             setAllOrders(orders);
             setAllBids(bids);

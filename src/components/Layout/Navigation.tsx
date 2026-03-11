@@ -1,6 +1,5 @@
 import React from 'react';
-import { Home, TrendingUp, Plus, MessageCircle, User, Settings, Users, Shield, TriangleAlert as AlertTriangle, Gift } from 'lucide-react';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { Home, Search, PlusCircle, User, Activity, FileText, ShieldAlert, TrendingUp, Landmark } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: string;
@@ -9,66 +8,121 @@ interface NavigationProps {
 }
 
 const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, userType }) => {
-  const { t } = useLanguage();
+  
+  // Admin Navigation Bar
+  if (userType === 'admin') {
+    return (
+      <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around p-3 z-50 pb-safe">
+        <NavItem 
+          icon={<Home size={24} />} 
+          label="Dashboard" 
+          isActive={activeTab === 'dashboard'} 
+          onClick={() => onTabChange('dashboard')} 
+        />
+        <NavItem 
+          icon={<ShieldAlert size={24} />} 
+          label="Verification" 
+          isActive={activeTab === 'verification'} 
+          onClick={() => onTabChange('verification')} 
+        />
+        <NavItem 
+          icon={<FileText size={24} />} 
+          label="Disputes" 
+          isActive={activeTab === 'disputes'} 
+          onClick={() => onTabChange('disputes')} 
+        />
+        <NavItem 
+          icon={<TrendingUp size={24} />} 
+          label="Prices" 
+          isActive={activeTab === 'prices'} 
+          onClick={() => onTabChange('prices')} 
+        />
+        <NavItem 
+          icon={<Landmark size={24} />} 
+          label="Schemes" 
+          isActive={activeTab === 'schemes'} 
+          onClick={() => onTabChange('schemes')} 
+        />
+      </nav>
+    );
+  }
 
-  const farmerTabs = [
-    { id: 'dashboard', icon: Home, labelKey: 'nav.home' },
-    { id: 'market', icon: TrendingUp, labelKey: 'nav.market' },
-    { id: 'traders', icon: Users, labelKey: 'nav.traders' },
-    { id: 'add', icon: Plus, labelKey: 'nav.sell' },
-    { id: 'chat', icon: MessageCircle, labelKey: 'nav.chat' }
-  ];
-
-  const traderTabs = [
-    { id: 'dashboard', icon: Home, labelKey: 'nav.home' },
-    { id: 'browse', icon: TrendingUp, labelKey: 'nav.buy' },
-    { id: 'chat', icon: MessageCircle, labelKey: 'nav.chat' },
-    { id: 'profile', icon: User, labelKey: 'nav.profile' },
-  ];
-
-  const adminTabs = [
-    { id: 'dashboard', icon: Home, labelKey: 'nav.home' },
-    { id: 'verification', icon: Shield, labelKey: 'nav.verification' },
-    { id: 'disputes', icon: AlertTriangle, labelKey: 'nav.disputes' },
-    { id: 'prices', icon: TrendingUp, labelKey: 'nav.prices' },
-    { id: 'schemes', icon: Gift, labelKey: 'nav.schemes' }
-  ];
-
-  const tabs = userType === 'farmer' ? farmerTabs : userType === 'trader' ? traderTabs : adminTabs;
-
+  // Farmer & Trader Navigation Bar
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="flex justify-around items-center py-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (userType === 'admin') {
-                  // For admin, we need to handle navigation differently
-                  // This will be handled by the parent component
-                  onTabChange(tab.id);
-                } else {
-                  onTabChange(tab.id);
-                }
-              }}
-              className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
-                isActive 
-                  ? 'text-green-600 bg-green-50' 
-                  : 'text-gray-600 hover:text-green-600'
-              }`}
-            >
-              <Icon size={24} />
-              <span className="text-xs mt-1 font-medium">{t(tab.labelKey)}</span>
-            </button>
-          );
-        })}
-      </div>
+    <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 flex justify-around p-3 z-50 pb-safe">
+      {/* 1. Dashboard (Always visible) */}
+      <NavItem 
+        icon={<Home size={24} />} 
+        label="Home" 
+        isActive={activeTab === 'dashboard'} 
+        onClick={() => onTabChange('dashboard')} 
+      />
+
+      {/* 2. Role-Specific Middle Buttons */}
+      {userType === 'farmer' ? (
+        <>
+          <NavItem 
+            icon={<PlusCircle size={24} />} 
+            label="Sell" 
+            isActive={activeTab === 'add'} 
+            onClick={() => onTabChange('add')} 
+          />
+          <NavItem 
+            icon={<Activity size={24} />} 
+            label="Market" 
+            isActive={activeTab === 'market'} 
+            onClick={() => onTabChange('market')} 
+          />
+        </>
+      ) : (
+        <>
+          <NavItem 
+            icon={<Search size={24} />} 
+            label="Browse" 
+            isActive={activeTab === 'browse'} 
+            onClick={() => onTabChange('browse')} 
+          />
+          <NavItem 
+            icon={<Activity size={24} />} 
+            label="Market" 
+            isActive={activeTab === 'market'} 
+            onClick={() => onTabChange('market')} 
+          />
+        </>
+      )}
+
+      {/* 3. Profile (Always visible for KYC and settings) */}
+      <NavItem 
+        icon={<User size={24} />} 
+        label="Profile" 
+        isActive={activeTab === 'profile'} 
+        onClick={() => onTabChange('profile')} 
+      />
     </nav>
   );
 };
+
+// Helper component for the individual buttons
+const NavItem = ({ 
+  icon, 
+  label, 
+  isActive, 
+  onClick 
+}: { 
+  icon: React.ReactNode, 
+  label: string, 
+  isActive: boolean, 
+  onClick: () => void 
+}) => (
+  <button 
+    onClick={onClick} 
+    className={`flex flex-col items-center space-y-1 transition-colors duration-200 ${
+      isActive ? 'text-green-600' : 'text-gray-500 hover:text-green-500'
+    }`}
+  >
+    {icon}
+    <span className="text-[10px] font-medium">{label}</span>
+  </button>
+);
 
 export default Navigation;

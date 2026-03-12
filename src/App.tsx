@@ -130,7 +130,8 @@ function AppContent() {
         return null;
 
       case 'market':
-        return <EnhancedMarketPrices prices={[]} />;
+        // 👉 NEW: Removed prices={[]} prop so it fetches its own live data
+        return <EnhancedMarketPrices />;
 
       case 'browse':
         return (

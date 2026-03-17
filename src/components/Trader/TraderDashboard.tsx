@@ -36,17 +36,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
       setVerificationStatus(userData?.verification_status || 'unverified');
 
       if (userData?.verification_status === 'verified') {
-        const { data: txData, error: txError } = await supabase
-          .from('orders')
-          .select(`
-            id, final_amount, status, payment_status, created_at, farmer_id,
-            bids ( quantity ), crop_listings ( variety, location ),
-            farmer:users!farmer_id (full_name)
-          `)
-          .eq('trader_id', traderId)
-          .order('created_at', { ascending: false });
-
-        if (txError) throw txError;
+        const txData = await api.getTraderOrders(traderId);
         setLiveTransactions(txData || []);
 
         const marketData = await api.getMarket();
@@ -137,8 +127,8 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
     );
   }
 
-  const activeBids = liveTransactions.filter(t => t.status === 'pending' || t.status === 'deal_accepted').length;
-  const pendingPayments = liveTransactions.filter(t => t.status === 'pending_payment' || t.payment_status === 'yet_to_paid').length;
+  const activeBids = liveTransactions.filter(t => t.payment_status === 'processing' || t.status === 'deal_accepted').length;
+  const pendingPayments = liveTransactions.filter(t => t.payment_status === 'yet_to_paid' || t.status === 'pending_payment').length;
 
   const filteredTransactions = liveTransactions.filter(transaction => {
     if (selectedFilter === 'all') return true;
@@ -190,61 +180,74 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
         </div>
         
         <div className="p-4 space-y-4">
-          {filteredTransactions.map((transaction) => (
-            <div key={transaction.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-3">
-                  <Package size={16} className="text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-800">Deal #{transaction.id.slice(0, 8)}</p>
-                    <p className="text-sm text-gray-600">₹{(transaction.final_amount || transaction.amount || 0).toLocaleString()}</p>
-                  </div>
-                </div>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(transaction.status, transaction.payment_status)}`}>
-                  {getStatusText(transaction.status, transaction.payment_status)}
-                </span>
-              </div>
-
-              <div className="flex space-x-2 mt-3">
-                <button onClick={() => setSelectedTransactionId(selectedTransactionId === transaction.id ? null : transaction.id)} className="flex-1 py-2 px-4 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200">
-                  {selectedTransactionId === transaction.id ? 'Hide Details' : 'View Details'}
-                </button>
-                
-                <button 
-                  onClick={() => setActiveChat({
-                    orderId: transaction.id,
-                    otherUserId: transaction.farmer_id,
-                    otherUserName: transaction.farmer?.full_name || 'Farmer'
-                  })} 
-                  className="flex-1 py-2 px-4 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200"
-                >
-                  Chat with Farmer
-                </button>
-              </div>
-
-              {selectedTransactionId === transaction.id && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
-                  <h4 className="font-semibold text-gray-800 text-sm border-b pb-2">सौदा विवरण / Deal Details</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-gray-500 text-xs">Crop / फसल</p>
-                      <p className="font-medium text-gray-800">{transaction.crop_listings?.variety || 'Unknown'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Quantity / मात्रा</p>
-                      <p className="font-medium text-gray-800">{transaction.bids?.[0]?.quantity || 0} Quintal</p>
-                    </div>
-                  </div>
-
-                  {(transaction.status === 'pending_payment' || transaction.payment_status === 'yet_to_paid') && (
-                    <button onClick={() => handlePayment(transaction)} disabled={processingPayment === transaction.id} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex justify-center items-center">
-                      {processingPayment === transaction.id ? 'Processing...' : `Pay ₹${transaction.final_amount} Now`}
-                    </button>
-                  )}
-                </div>
-              )}
+          {filteredTransactions.length === 0 ? (
+            <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed">
+              <Package className="mx-auto text-gray-400 mb-2" size={32} />
+              <p className="text-gray-500 text-sm">अभी तक कोई लेनदेन नहीं / No transactions available.</p>
             </div>
-          ))}
+          ) : (
+            filteredTransactions.map((transaction) => (
+              <div key={transaction.id} className="border rounded-lg p-4 bg-gray-50 shadow-sm">
+                <div className="flex items-center justify-between mb-3 border-b pb-3">
+                  <div className="flex items-center space-x-3">
+                    <Package size={16} className="text-blue-600" />
+                    <div>
+                      <h4 className="font-bold text-gray-800">Crop: {transaction.crop_listings?.variety || 'Unknown'}</h4>
+                      <p className="text-sm font-semibold text-green-700">Amount: ₹{(transaction.final_amount || transaction.amount || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusColor(transaction.status, transaction.payment_status)}`}>
+                    {getStatusText(transaction.status, transaction.payment_status)}
+                  </span>
+                </div>
+
+                <div className="text-sm text-gray-600 mb-4">
+                  <p><strong>Farmer:</strong> {transaction.farmer?.full_name || 'N/A'}</p>
+                  <p><strong>Phone:</strong> {transaction.farmer?.phone || 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-1">Order Date: {new Date(transaction.created_at).toLocaleDateString()}</p>
+                </div>
+
+                <div className="flex space-x-2 mt-3">
+                  <button onClick={() => setSelectedTransactionId(selectedTransactionId === transaction.id ? null : transaction.id)} className="flex-1 py-2 px-4 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200">
+                    {selectedTransactionId === transaction.id ? 'Hide Details' : 'View Details'}
+                  </button>
+                
+                  <button 
+                    onClick={() => setActiveChat({
+                      orderId: transaction.id,
+                      otherUserId: transaction.farmer_id,
+                      otherUserName: transaction.farmer?.full_name || 'Farmer'
+                    })} 
+                    className="flex-1 py-2 px-4 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 flex items-center justify-center space-x-2"
+                  >
+                    <span>Message Farmer</span>
+                  </button>
+                </div>
+
+                {selectedTransactionId === transaction.id && (
+                  <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200 shadow-inner space-y-3">
+                    <h4 className="font-semibold text-gray-800 text-sm border-b pb-2">सौदा विवरण / Deal Details</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-gray-500 text-xs">Crop / फसल</p>
+                        <p className="font-medium text-gray-800">{transaction.crop_listings?.variety || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Quantity / मात्रा</p>
+                        <p className="font-medium text-gray-800">{transaction.bids?.[0]?.quantity || transaction.bids?.quantity || 0} Quintal</p>
+                      </div>
+                    </div>
+
+                    {(transaction.status === 'pending_payment' || transaction.payment_status === 'yet_to_paid') && (
+                      <button onClick={() => handlePayment(transaction)} disabled={processingPayment === transaction.id} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex justify-center items-center">
+                        {processingPayment === transaction.id ? 'Processing...' : `Pay ₹${transaction.final_amount} Now`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 

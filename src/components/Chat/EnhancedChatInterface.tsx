@@ -23,16 +23,23 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
   const [loading, setLoading] = useState(true);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // WebSocket ref for fast message delivery (⚡ primary path)
+  const wsRef = useRef<WebSocket | null>(null);
+  // Track message IDs we've already added to avoid duplicates from WS + Realtime
+  const seenMsgIds = useRef<Set<string>>(new Set());
 
   // CRASH-PROOF SAFETY: Ensure we always have a string for the name
   const safeName = otherUserName || 'User';
 
-  // --- 1. FETCH LIVE MESSAGES ---
+  // --- 1. FETCH LIVE MESSAGES + SETUP CONNECTIONS ---
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         const data = await api.getMessages(orderId);
-        setMessages(data || []);
+        const msgs = data || [];
+        // Seed the dedup tracker with existing message IDs
+        msgs.forEach((m: any) => seenMsgIds.current.add(m.id));
+        setMessages(msgs);
       } catch (error) {
         console.error("Failed to load messages", error);
       } finally {
@@ -41,13 +48,40 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
     };
     fetchMessages();
 
-    // Listen for incoming live messages via WebSockets!
+    // ⚡ WebSocket connection for near-instant delivery
+    const token = localStorage.getItem('supabase_token');
+    const wsUrl = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:5000/ws';
+    const ws = new WebSocket(`${wsUrl}?order_id=${orderId}&token=${token}`);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        // Dedup: skip if we've already added this message from any source
+        if (msg.id && seenMsgIds.current.has(msg.id)) return;
+        if (msg.id) seenMsgIds.current.add(msg.id);
+        setMessages(prev => [...prev, msg]);
+      } catch { /* ignore malformed messages */ }
+    };
+
+    ws.onerror = () => {
+      console.warn('Chat WebSocket unavailable — Supabase Realtime fallback active');
+    };
+
+    // 📡 Supabase Realtime — fallback if WebSocket drops
     const channel = supabase.channel(`chat_${orderId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `order_id=eq.${orderId}` }, (payload) => {
-        setMessages(prev => [...prev, payload.new]);
+        const msg = payload.new;
+        if (seenMsgIds.current.has(msg.id)) return; // skip if WS already delivered it
+        seenMsgIds.current.add(msg.id);
+        setMessages(prev => [...prev, msg]);
       }).subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      ws.close();
+      wsRef.current = null;
+      supabase.removeChannel(channel);
+    };
   }, [orderId]);
 
   // Scroll to bottom when new message arrives
@@ -65,7 +99,15 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
     setShowQuickReplies(false);
     
     try {
-      await api.sendMessage(orderId, otherUserId, content);
+      // Save to DB (source of truth)
+      const saved = await api.sendMessage(orderId, otherUserId, content);
+      // Track this ID so Realtime doesn't duplicate it
+      if (saved?.id) seenMsgIds.current.add(saved.id);
+
+      // ⚡ Also broadcast via WS for instant delivery to the other user's tab
+      if (wsRef.current?.readyState === WebSocket.OPEN && saved) {
+        wsRef.current.send(JSON.stringify(saved));
+      }
     } catch (error) {
       console.error("Failed to send message", error);
     }
@@ -74,7 +116,11 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
   const handleQuickReply = async (reply: string) => {
     setShowQuickReplies(false);
     try {
-      await api.sendMessage(orderId, otherUserId, reply);
+      const saved = await api.sendMessage(orderId, otherUserId, reply);
+      if (saved?.id) seenMsgIds.current.add(saved.id);
+      if (wsRef.current?.readyState === WebSocket.OPEN && saved) {
+        wsRef.current.send(JSON.stringify(saved));
+      }
     } catch (error) {
       console.error("Failed to send message", error);
     }

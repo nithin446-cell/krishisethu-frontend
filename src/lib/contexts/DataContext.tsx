@@ -30,6 +30,17 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Prefix all keys so they're easy to wipe on logout
+const cacheKey = (userId: string, suffix: string) => `ks_${userId}_${suffix}`;
+
+// Wipe all cache entries belonging to a specific user
+const clearUserCache = (userId: string) => {
+    const prefix = `ks_${userId}_`;
+    Object.keys(sessionStorage)
+        .filter(k => k.startsWith(prefix))
+        .forEach(k => sessionStorage.removeItem(k));
+};
+
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user, userRole } = useAuth();
 
@@ -82,18 +93,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshFarmerData = async (farmerId: string) => {
         setIsRefreshing(true);
         try {
-            const cachedBids = getFromCache(`cache_bids_${farmerId}`);
+            // 🔑 Cache key is scoped to this specific farmer's userId
+            const bidsCacheKey = cacheKey(farmerId, 'bids');
+            const cachedBids = getFromCache(bidsCacheKey);
             if (cachedBids) setFarmerBids(cachedBids);
 
             const bids = await api.getFarmerBids(farmerId).catch(() => []);
             if (bids.length > 0 || !cachedBids) {
                 setFarmerBids(bids);
-                setCache(`cache_bids_${farmerId}`, bids);
+                setCache(bidsCacheKey, bids);
             }
-
-            // We don't have farmer listings or orders in api.ts right now, assuming empty or implemented later
-            // const listings = await api.getFarmerListings(farmerId);
-            // setFarmerListings(listings);
         } catch (error) {
             console.error('Error fetching farmer data:', error);
         } finally {
@@ -104,13 +113,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshTraderData = async (traderId: string) => {
         setIsRefreshing(true);
         try {
-            const cachedBids = getFromCache(`cache_trader_bids_${traderId}`);
+            // 🔑 Cache key scoped to this specific trader's userId
+            const bidsCacheKey = cacheKey(traderId, 'trader_bids');
+            const cachedBids = getFromCache(bidsCacheKey);
             if (cachedBids) setTraderBids(cachedBids);
 
             const bids = await api.getTraderBids(traderId).catch(() => []);
             if (bids.length > 0 || !cachedBids) {
                 setTraderBids(bids);
-                setCache(`cache_trader_bids_${traderId}`, bids);
+                setCache(bidsCacheKey, bids);
             }
         } catch (error) {
             console.error('Error fetching trader data:', error);
@@ -122,13 +133,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshMarketListings = async () => {
         setIsRefreshing(true);
         try {
-            const cachedMarket = getFromCache('cache_market_listings');
+            // Market listings are shared, but still namespaced to avoid collisions
+            const marketCacheKey = 'ks_shared_market_listings';
+            const cachedMarket = getFromCache(marketCacheKey);
             if (cachedMarket) setMarketListings(cachedMarket);
 
             const market = await api.getMarket().catch(() => []);
             if (market.length > 0 || !cachedMarket) {
                 setMarketListings(market);
-                setCache('cache_market_listings', market);
+                setCache(marketCacheKey, market);
             }
         } catch (error) {
             console.error('Error fetching market listings:', error);
@@ -154,23 +167,34 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     useEffect(() => {
-        if (user?.id) {
-            setIsLoading(true);
-
-            const initData = async () => {
-                if (userRole === 'farmer') {
-                    await refreshFarmerData(user.id);
-                } else if (userRole === 'trader') {
-                    await refreshTraderData(user.id);
-                    await refreshMarketListings();
-                } else if (userRole === 'admin') {
-                    await refreshAdminData();
-                }
-                setIsLoading(false);
-            };
-
-            initData();
+        if (!user?.id) {
+            // 🧹 User logged out — reset all state so the next user starts clean
+            setFarmerListings([]);
+            setFarmerBids([]);
+            setFarmerOrders([]);
+            setTraderBids([]);
+            setTraderOrders([]);
+            setMarketListings([]);
+            setAllOrders([]);
+            setAllBids([]);
+            setAllUsers([]);
+            return;
         }
+
+        setIsLoading(true);
+        const initData = async () => {
+            if (userRole === 'farmer') {
+                await refreshFarmerData(user.id);
+            } else if (userRole === 'trader') {
+                await refreshTraderData(user.id);
+                await refreshMarketListings();
+            } else if (userRole === 'admin') {
+                await refreshAdminData();
+            }
+            setIsLoading(false);
+        };
+
+        initData();
     }, [user?.id, userRole]);
 
     return (

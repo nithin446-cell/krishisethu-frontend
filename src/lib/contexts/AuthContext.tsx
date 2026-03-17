@@ -179,12 +179,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // Sign out of Supabase Auth to invalidate JWT token
             await supabase.auth.signOut();
 
-            // Clear authentication data from local storage
+            // Clear all authentication data from local storage
             localStorage.removeItem('auth_user_id');
             localStorage.removeItem('auth_user_phone');
             localStorage.removeItem('auth_user_name');
             localStorage.removeItem('user_role');
-            localStorage.removeItem('supabase_token'); // Clear backend token
+            localStorage.removeItem('supabase_token');
+
+            // 🧹 Wipe all cached data so the next user starts fresh
+            sessionStorage.clear();
 
             setUser(null);
             setUserRole(null);
@@ -195,6 +198,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(false);
         }
     };
+
 
     const signup = async (data: any) => {
         setIsLoading(true);

@@ -23,45 +23,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
-        // Check active session on initial load
+        // Validate the session via Supabase Auth on initial load
+        // This ensures the JWT token we use for backend API calls is always fresh.
         const restoreSession = async () => {
             try {
-                const savedUserId = localStorage.getItem('auth_user_id');
-                const savedRole = localStorage.getItem('user_role') as 'farmer' | 'trader' | 'admin' | null;
+                const { data: sessionData } = await supabase.auth.getSession();
+                const session = sessionData?.session;
 
-                if (savedUserId && savedRole) {
+                if (session) {
+                    // ✅ Update the backend API token with the freshly validated one
+                    localStorage.setItem('supabase_token', session.access_token);
+
+                    const userId = session.user.id;
                     const { data, error } = await supabase
                         .from('users')
                         .select('*')
-                        .eq('id', savedUserId)
+                        .eq('id', userId)
                         .single();
 
-                    if (data) {
+                    if (data && !error) {
                         const userData: User = {
                             id: data.id,
-                            type: data.role || savedRole,
-                            name: data.full_name || `${savedRole.charAt(0).toUpperCase() + savedRole.slice(1)} User`,
+                            type: data.role as 'farmer' | 'trader' | 'admin',
+                            name: data.full_name || `${data.role.charAt(0).toUpperCase() + data.role.slice(1)} User`,
                             location: data.location || 'India',
                             verified: data.verification_status === 'verified',
                             phone: data.phone || ''
                         };
+                        localStorage.setItem('auth_user_id', userId);
+                        localStorage.setItem('user_role', data.role);
+                        localStorage.setItem('auth_user_name', userData.name);
                         setUser(userData);
-                        setUserRole(savedRole);
+                        setUserRole(data.role);
                         setIsAuthenticated(true);
                     } else {
-                        // Fallback to mock session if Supabase backend doesn't have the user yet
-                        const mockUser: User = {
-                            id: savedUserId,
-                            type: savedRole,
-                            name: localStorage.getItem('auth_user_name') || `${savedRole.charAt(0).toUpperCase() + savedRole.slice(1)} User`,
-                            location: 'India',
-                            verified: true,
-                            phone: ''
-                        };
-                        setUser(mockUser);
-                        setUserRole(savedRole);
-                        setIsAuthenticated(true);
+                        // No profile found in DB, clear stale auth
+                        localStorage.removeItem('supabase_token');
+                        localStorage.removeItem('auth_user_id');
                     }
+                } else {
+                    // No active Supabase session - clear any stale localStorage data
+                    localStorage.removeItem('supabase_token');
+                    localStorage.removeItem('auth_user_id');
+                    localStorage.removeItem('user_role');
                 }
             } catch (error) {
                 console.error('Session restoration failed:', error);
@@ -71,6 +75,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
 
         restoreSession();
+
+        // 🔄 Subscribe to auth state changes to keep the JWT token fresh
+        // When Supabase silently refreshes the token, we update localStorage immediately
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                // Always keep the backend API token in sync
+                localStorage.setItem('supabase_token', session.access_token);
+            } else if (event === 'SIGNED_OUT') {
+                localStorage.removeItem('supabase_token');
+            }
+        });
+
+        return () => {
+            authListener.subscription.unsubscribe();
+        };
     }, []);
 
     // Listen for Realtime verification status changes

@@ -186,7 +186,7 @@ let wsManager: WebSocketManager | null = null;
 
 function getWSManager(): WebSocketManager {
     if (!wsManager) {
-        const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:3000';
+        const wsUrl = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:5000/ws';
         wsManager = new WebSocketManager(wsUrl);
     }
     return wsManager;

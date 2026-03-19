@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, PlusCircle, User, Activity, FileText, ShieldAlert, TrendingUp, Landmark, Bot } from 'lucide-react';
+import { Home, Search, PlusCircle, User, Activity, FileText, ShieldAlert, TrendingUp, Landmark } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: string;
@@ -72,12 +72,6 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, userTyp
             label="Market" 
             isActive={activeTab === 'market'} 
             onClick={() => onTabChange('market')} 
-          />
-          <NavItem 
-            icon={<Bot size={24} />} 
-            label="Assistant" 
-            isActive={activeTab === 'assistant'} 
-            onClick={() => onTabChange('assistant')} 
           />
         </>
       ) : (

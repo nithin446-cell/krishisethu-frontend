@@ -13,7 +13,6 @@ import EnhancedMarketPrices from './components/Market/EnhancedMarketPrices';
 import TraderListings from './components/Trader/TraderListings';
 import EnhancedBiddingSystem from './components/Bidding/EnhancedBiddingSystem';
 import EnhancedChatInterface from './components/Chat/EnhancedChatInterface'; 
-import AIChatbot from './components/Chat/AIChatbot';
 import TransactionTracking from './components/Transaction/TransactionTracking';
 import GovernmentSchemes from './components/Government/GovernmentSchemes';
 import TraderListingsForFarmers from './components/Trader/TraderListingsForFarmers';
@@ -144,9 +143,6 @@ function AppContent() {
             }}
           />
         );
-
-      case 'assistant':
-        return <AIChatbot />;
 
       case 'add':
         return <EnhancedAddProduce onSubmit={handleAddProduce} onBack={() => setActiveTab('dashboard')} farmerId={user.id} />;

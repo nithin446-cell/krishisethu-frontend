@@ -51,7 +51,6 @@ export const api = {
   // ==========================================
   getMessages: async (orderId: string) => fetchJSON(`${API_BASE_URL}/chat/${orderId}`, { headers: getAuthHeaders() }),
   sendMessage: async (order_id: string, receiver_id: string, content: string) => fetchJSON(`${API_BASE_URL}/chat`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ order_id, receiver_id, content }) }),
-  chatWithAI: async (messages: any[]) => fetchJSON(`${API_BASE_URL}/ai/chat`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ messages }) }),
 
   // ==========================================
   // KYC UPLOAD API

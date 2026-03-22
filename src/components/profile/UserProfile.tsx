@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, ShieldCheck, Shield, Upload, Loader2, CheckCircle, Clock, Key, Lock } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Shield, Upload, Loader2, CheckCircle, Clock, Key, Lock, Building } from 'lucide-react';
 import { api } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import BankAccountSetup from '../Farmer/BankAccountSetup';
 
 const UserProfile = ({ userId, initialUser }: { userId: string, initialUser: any }) => {
   const [liveUser, setLiveUser] = useState<any>(initialUser);
@@ -15,6 +16,9 @@ const UserProfile = ({ userId, initialUser }: { userId: string, initialUser: any
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Bank Setup State
+  const [showBankSetup, setShowBankSetup] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -79,6 +83,17 @@ const UserProfile = ({ userId, initialUser }: { userId: string, initialUser: any
   if (fetching) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-green-600" /></div>;
 
   const status = liveUser.verification_status || 'unverified';
+
+  if (showBankSetup) {
+    return (
+      <BankAccountSetup 
+        userId={liveUser.id} 
+        userRole={liveUser.role} 
+        onComplete={() => setShowBankSetup(false)} 
+        onBack={() => setShowBankSetup(false)} 
+      />
+    );
+  }
 
   return (
     <div className="p-4 space-y-6 pb-24">
@@ -196,9 +211,14 @@ const UserProfile = ({ userId, initialUser }: { userId: string, initialUser: any
           </div>
         )}
 
-        <div className="pt-4">
-          <button onClick={() => setShowPasswordForm(!showPasswordForm)} className="flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition">
-            <Key size={16} className="mr-2" />
+        <div className="pt-4 space-y-3">
+          <button onClick={() => setShowBankSetup(true)} className="w-full flex items-center justify-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 py-3 rounded-lg transition">
+            <Building size={18} className="mr-2" />
+            Manage Linked Bank Account
+          </button>
+
+          <button onClick={() => setShowPasswordForm(!showPasswordForm)} className="w-full flex items-center justify-center text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 py-3 rounded-lg transition">
+            <Key size={18} className="mr-2" />
             {showPasswordForm ? 'Cancel Password Change' : 'Change Password'}
           </button>
 

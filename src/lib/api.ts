@@ -53,9 +53,78 @@ export const api = {
   sendMessage: async (order_id: string, receiver_id: string, content: string) => fetchJSON(`${API_BASE_URL}/chat`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ order_id, receiver_id, content }) }),
 
   // ==========================================
+  // BANK & PAYOUT APIs
+  // ==========================================
+  /**
+   * Step 1: Send ₹1 penny to user's account for verification.
+   * Returns a reference_id to use in subsequent steps.
+   */
+  initiatePennyDrop: async (data: {
+    account_holder_name: string;
+    account_number?: string;
+    ifsc_code?: string;
+    upi_id?: string;
+    account_type?: string;
+    bank_id: string;
+  }) =>
+    fetchJSON(`${API_BASE_URL}/bank/initiate-penny-drop`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    }),
+
+  /**
+   * Step 2: User confirms the exact rupee amount they received.
+   * Backend compares against HMAC — amount is never stored as plaintext.
+   */
+  verifyPennyDrop: async (data: {
+    reference_id: string;
+    entered_amount: number;
+  }) =>
+    fetchJSON(`${API_BASE_URL}/bank/verify-penny-drop`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    }),
+
+  /**
+   * Step 3: Submit debit card last6 + expiry.
+   * Backend creates Razorpay Route linked account for farmers,
+   * saves final bank_account record.
+   */
+  registerBankWithRazorpay: async (data: {
+    reference_id: string;
+    card_last6: string;
+    card_expiry_month: string;
+    card_expiry_year: string;
+  }) =>
+    fetchJSON(`${API_BASE_URL}/bank/register-with-card`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    }),
+
+  /**
+   * Fetch current user's saved (masked) bank account info.
+   * Returns has_account: false if none registered.
+   */
+  getMyBankAccount: async () =>
+    fetchJSON(`${API_BASE_URL}/bank/my-account`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    }),
+
+  // ==========================================
   // KYC UPLOAD API
   // ==========================================
   uploadKYC: async (formData: any) => fetchJSON(`${API_BASE_URL}/user/kyc`, { method: 'POST', headers: getAuthHeaders(true), body: formData }),
+  
+  // surepass KYC routes
+  getKYCStatus: async () => fetchJSON(`${API_BASE_URL}/kyc/status`, { headers: getAuthHeaders() }),
+  verifyPAN: async (data: any) => fetchJSON(`${API_BASE_URL}/kyc/verify-pan`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
+  sendAadhaarOtp: async (data: { aadhaar: string }) => fetchJSON(`${API_BASE_URL}/kyc/aadhaar-send-otp`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
+  verifyAadhaarOtp: async (data: { client_id: string, otp: string }) => fetchJSON(`${API_BASE_URL}/kyc/aadhaar-verify-otp`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
+  submitKYC: async (formData: FormData) => fetchJSON(`${API_BASE_URL}/kyc/submit`, { method: 'POST', headers: getAuthHeaders(true), body: formData }),
 
   // ==========================================
   // ADMIN APIs

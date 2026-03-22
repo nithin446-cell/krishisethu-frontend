@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
 import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
 
-const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
+const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string, onViewOrderTracking?: (id: string) => void }) => {
   const [myListings, setMyListings] = useState<any[]>([]);
   const [farmerOrders, setFarmerOrders] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
@@ -169,7 +169,7 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
             </div>
           ) : (
             farmerOrders.map((order) => (
-              <div key={order.id} className="border rounded-lg p-4 bg-white shadow-sm">
+              <div key={order.id} onClick={() => onViewOrderTracking && onViewOrderTracking(order.id)} className="border rounded-lg p-4 bg-white shadow-sm cursor-pointer hover:border-green-300 transition-colors">
                 <div className="flex justify-between items-start mb-3 border-b pb-3">
                   <div>
                     <h4 className="font-bold text-gray-800">Crop: {order.crop_listings?.variety || 'Unknown'}</h4>
@@ -186,11 +186,14 @@ const EnhancedDashboard = ({ farmerId }: { farmerId: string }) => {
                   <p className="text-xs text-gray-400 mt-1">Order Date: {new Date(order.created_at).toLocaleDateString()}</p>
                   
                   <button 
-                    onClick={() => setActiveChat({
-                      orderId: order.id,
-                      otherUserId: order.trader_id,
-                      otherUserName: order.trader?.full_name || order.trader?.business_name || 'Trader'
-                    })} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveChat({
+                        orderId: order.id,
+                        otherUserId: order.trader_id,
+                        otherUserName: order.trader?.full_name || order.trader?.business_name || 'Trader'
+                      });
+                    }} 
                     className="mt-3 flex items-center py-1.5 px-3 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-200"
                   >
                     <MessageSquare size={14} className="mr-1" /> Message Trader

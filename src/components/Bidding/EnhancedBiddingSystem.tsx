@@ -19,15 +19,13 @@ interface EnhancedBiddingSystemProps {
   onPlaceBid: (bid: Omit<Bid, 'id' | 'timestamp'>) => void;
   currentUserId: string;
   onBack: () => void;
-  onContactFarmer: () => void;
 }
 
 const EnhancedBiddingSystem: React.FC<EnhancedBiddingSystemProps> = ({
   produce,
   onPlaceBid,
   currentUserId,
-  onBack,
-  onContactFarmer
+  onBack
 }) => {
   const [bidAmount, setBidAmount] = useState('');
   const [bidQuantity, setBidQuantity] = useState(produce.quantity.toString());
@@ -118,12 +116,6 @@ const EnhancedBiddingSystem: React.FC<EnhancedBiddingSystemProps> = ({
             <h1 className="text-lg font-semibold text-gray-800">बोली लगाएं</h1>
             <p className="text-sm text-gray-600">Place Your Bid</p>
           </div>
-          <button
-            onClick={onContactFarmer}
-            className="p-2 bg-green-100 rounded-full hover:bg-green-200 transition-colors"
-          >
-            <Phone size={20} className="text-green-600" />
-          </button>
         </div>
       </div>
 

@@ -18,9 +18,10 @@ const loadRazorpayScript = () => {
 interface TraderDashboardProps {
   availableProduce: Produce[]; 
   traderId: string;
+  onViewOrderTracking?: (id: string) => void;
 }
 
-const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, traderId }) => {
+const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, traderId, onViewOrderTracking }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [liveTransactions, setLiveTransactions] = useState<any[]>([]);
   const [liveProduce, setLiveProduce] = useState<any[]>([]); 
@@ -187,7 +188,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
             </div>
           ) : (
             filteredTransactions.map((transaction) => (
-              <div key={transaction.id} className="border rounded-lg p-4 bg-gray-50 shadow-sm">
+              <div key={transaction.id} onClick={() => onViewOrderTracking && onViewOrderTracking(transaction.id)} className="border rounded-lg p-4 bg-gray-50 shadow-sm cursor-pointer hover:border-blue-300 transition-colors">
                 <div className="flex items-center justify-between mb-3 border-b pb-3">
                   <div className="flex items-center space-x-3">
                     <Package size={16} className="text-blue-600" />
@@ -208,16 +209,22 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                 </div>
 
                 <div className="flex space-x-2 mt-3">
-                  <button onClick={() => setSelectedTransactionId(selectedTransactionId === transaction.id ? null : transaction.id)} className="flex-1 py-2 px-4 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200">
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTransactionId(selectedTransactionId === transaction.id ? null : transaction.id);
+                  }} className="flex-1 py-2 px-4 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200">
                     {selectedTransactionId === transaction.id ? 'Hide Details' : 'View Details'}
                   </button>
                 
                   <button 
-                    onClick={() => setActiveChat({
-                      orderId: transaction.id,
-                      otherUserId: transaction.farmer_id,
-                      otherUserName: transaction.farmer?.full_name || 'Farmer'
-                    })} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveChat({
+                        orderId: transaction.id,
+                        otherUserId: transaction.farmer_id,
+                        otherUserName: transaction.farmer?.full_name || 'Farmer'
+                      });
+                    }} 
                     className="flex-1 py-2 px-4 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 flex items-center justify-center space-x-2"
                   >
                     <span>Message Farmer</span>
@@ -239,7 +246,10 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                     </div>
 
                     {(transaction.status === 'pending_payment' || transaction.payment_status === 'yet_to_paid') && (
-                      <button onClick={() => handlePayment(transaction)} disabled={processingPayment === transaction.id} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex justify-center items-center">
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        handlePayment(transaction);
+                      }} disabled={processingPayment === transaction.id} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex justify-center items-center">
                         {processingPayment === transaction.id ? 'Processing...' : `Pay ₹${transaction.final_amount} Now`}
                       </button>
                     )}

@@ -120,58 +120,86 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
-            // 1. Authenticate securely with Supabase Auth
+            // 1. Authenticate — this automatically sets the session on the supabase singleton
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
 
             if (authError) throw authError;
-            if (!authData.session) throw new Error("No session returned from Supabase.");
+            if (!authData.session) throw new Error('No session returned from Supabase.');
 
             const userId = authData.user.id;
+            const accessToken = authData.session.access_token;
 
-            // 2. Fetch the user's full profile from your public 'users' table
-            const { data: dbUser, error: fetchError } = await supabase
+            // Store token for backend API calls
+            localStorage.setItem('supabase_token', accessToken);
+
+            // 2. The supabase singleton now has the session set — fetch profile directly
+            // Use maybeSingle() so a missing row returns null instead of an error
+            let { data: dbUser, error: fetchError } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', userId)
-                .single();
+                .maybeSingle();
 
-            if (fetchError || !dbUser) {
-                console.error("Profile fetch error:", fetchError);
-                throw new Error("User authenticated, but profile not found in database.");
+            if (fetchError) {
+                console.error('Profile fetch error:', fetchError);
+                throw new Error(`Could not load your profile: ${fetchError.message}`);
             }
 
-            // 3. Build the User object for the frontend state
+            // 3. If no profile row exists yet, create one (handles accounts created
+            //    directly in Supabase dashboard bypassing /api/auth/signup)
+            if (!dbUser) {
+                const { data: upserted, error: upsertError } = await supabase
+                    .from('users')
+                    .upsert({
+                        id: userId,
+                        email: authData.user.email,
+                        full_name: authData.user.user_metadata?.full_name
+                            || authData.user.email?.split('@')[0]
+                            || 'User',
+                        role: 'farmer',
+                        phone: null,
+                    }, { onConflict: 'id' })
+                    .select()
+                    .single();
+
+                if (upsertError || !upserted) {
+                    console.error('Profile upsert failed:', upsertError);
+                    throw new Error('Could not create your profile. Please contact support.');
+                }
+                dbUser = upserted;
+            }
+
+            // 4. Build frontend User object
             const userData: User = {
                 id: dbUser.id,
                 type: dbUser.role as 'farmer' | 'trader' | 'admin',
-                name: dbUser.full_name || `${dbUser.role.charAt(0).toUpperCase() + dbUser.role.slice(1)} User`,
+                name: dbUser.full_name || `${dbUser.role?.charAt(0).toUpperCase()}${dbUser.role?.slice(1)} User`,
                 location: dbUser.location || 'India',
                 verified: dbUser.verification_status === 'verified',
                 phone: dbUser.phone || ''
             };
 
-            // 4. Persist session details to localStorage
+            // 5. Persist to localStorage
             localStorage.setItem('auth_user_id', dbUser.id);
+            localStorage.setItem('auth_user_email', dbUser.email || email);
             localStorage.setItem('auth_user_phone', dbUser.phone || '');
             localStorage.setItem('auth_user_name', userData.name);
             localStorage.setItem('user_role', userData.type);
-            
-            // CRITICAL: Store the Supabase token so API calls can use it in the Authorization header
-            localStorage.setItem('supabase_token', authData.session.access_token);
 
             setUser(userData);
             setUserRole(userData.type);
             setIsAuthenticated(true);
         } catch (error) {
             console.error('Login error:', error);
-            throw error; // Re-throw to be caught by the UI (e.g., to show an error message)
+            throw error;
         } finally {
             setIsLoading(false);
         }
     };
+
 
     const logout = async () => {
         setIsLoading(true);

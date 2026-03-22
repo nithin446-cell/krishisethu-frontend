@@ -40,6 +40,15 @@ export const api = {
   listProduce: async (produceData: any, isFormData: boolean = false) => fetchJSON(`${API_BASE_URL}/farmer/upload`, { method: 'POST', headers: getAuthHeaders(isFormData), body: isFormData ? produceData : JSON.stringify(produceData) }),
 
   // ==========================================
+  // ORDER TRACKING APIs
+  // ==========================================
+  getOrderById: async (id: string) => fetchJSON(`${API_BASE_URL}/orders/${id}`, { headers: getAuthHeaders() }),
+  updateOrderStatus: async (id: string, status: string, data?: any) => fetchJSON(`${API_BASE_URL}/orders/${id}/status`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ status, ...data }) }),
+  updateOrderStatusWithPhoto: async (id: string, formData: FormData) => fetchJSON(`${API_BASE_URL}/orders/${id}/deliver`, { method: 'PUT', headers: getAuthHeaders(true), body: formData }),
+  raiseDispute: async (id: string, data: any) => fetchJSON(`${API_BASE_URL}/orders/${id}/dispute`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
+  submitRating: async (id: string, data: any) => fetchJSON(`${API_BASE_URL}/orders/${id}/rating`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
+
+  // ==========================================
   // PAYMENT APIs
   // ==========================================
   processPayment: async (order_id: string, amount: number) => fetchJSON(`${API_BASE_URL}/payment/create`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ order_id, amount }) }),
@@ -126,10 +135,51 @@ export const api = {
   verifyAadhaarOtp: async (data: { client_id: string, otp: string }) => fetchJSON(`${API_BASE_URL}/kyc/aadhaar-verify-otp`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
   submitKYC: async (formData: FormData) => fetchJSON(`${API_BASE_URL}/kyc/submit`, { method: 'POST', headers: getAuthHeaders(true), body: formData }),
 
-  // ==========================================
-  // ADMIN APIs
-  // ==========================================
-  getAdminDashboard: async () => fetchJSON(`${API_BASE_URL}/admin/dashboard`, { headers: getAuthHeaders() }),
+// ==========================================
+// ADMIN APIs
+// ==========================================
+getAdminDashboard: async () =>
+  fetchJSON(`${API_BASE_URL}/admin/orders`, { method: 'GET', headers: getAuthHeaders() }),
+
+adminGetStats: async () =>
+  fetchJSON(`${API_BASE_URL}/admin/stats`, { method: 'GET', headers: getAuthHeaders() }),
+
+adminGetKYCList: async (status: 'pending'|'approved'|'rejected') =>
+  fetchJSON(`${API_BASE_URL}/admin/kyc?status=${status}`, { method: 'GET', headers: getAuthHeaders() }),
+
+adminKYCDecision: async (userId: string, decision: string, reason?: string) =>
+  fetchJSON(`${API_BASE_URL}/admin/kyc/${userId}/decision`, {
+    method: 'POST', headers: getAuthHeaders(),
+    body: JSON.stringify({ decision, reason }),
+  }),
+
+adminGetDisputes: async (status = 'open') =>
+  fetchJSON(`${API_BASE_URL}/admin/disputes?status=${status}`, { method: 'GET', headers: getAuthHeaders() }),
+
+adminResolveDispute: async (id: string, data: { decision: string; resolution: string }) =>
+  fetchJSON(`${API_BASE_URL}/admin/disputes/${id}/resolve`, {
+    method: 'POST', headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  }),
+
+adminGetUsers: async (params: { search?: string; role?: string }) =>
+  fetchJSON(`${API_BASE_URL}/admin/users?search=${params.search||''}&role=${params.role||'all'}`, {
+    method: 'GET', headers: getAuthHeaders()
+  }),
+
+adminUpdateUserStatus: async (userId: string, status: string) =>
+  fetchJSON(`${API_BASE_URL}/admin/users/${userId}/status`, {
+    method: 'PATCH', headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
+  }),
+
+adminGetPayouts: async (status = 'all') =>
+  fetchJSON(`${API_BASE_URL}/admin/payouts?status=${status}`, { method: 'GET', headers: getAuthHeaders() }),
+
+adminManualPayout: async (orderId: string) =>
+  fetchJSON(`${API_BASE_URL}/admin/payouts/${orderId}/pay`, {
+    method: 'POST', headers: getAuthHeaders()
+  }),
 
   resolveDispute: async (orderId: string, action: 'refund_trader' | 'force_complete') =>
     fetchJSON(`${API_BASE_URL}/admin/order/${orderId}/resolve`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ action }) }),

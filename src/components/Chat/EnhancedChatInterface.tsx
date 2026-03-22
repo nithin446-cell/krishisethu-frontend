@@ -22,6 +22,8 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // WebSocket ref for fast message delivery (⚡ primary path)
   const wsRef = useRef<WebSocket | null>(null);
@@ -89,41 +91,56 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // --- 2. SEND MESSAGE ---
-  const handleSend = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!newMessage.trim()) return;
+  // --- 2. SEND MESSAGE (with optimistic UI) ---
+  const sendOptimistic = async (content: string) => {
+    setSendError(null);
+    setIsSending(true);
 
-    const content = newMessage.trim();
-    setNewMessage('');
-    setShowQuickReplies(false);
-    
+    // Build a temp message — shown immediately at 50% opacity
+    const tempId = `temp_${Date.now()}`;
+    const tempMsg = {
+      id: tempId,
+      sender_id: currentUserId,
+      receiver_id: otherUserId,
+      content,
+      created_at: new Date().toISOString(),
+      _optimistic: true,
+    };
+    setMessages(prev => [...prev, tempMsg]);
+
     try {
-      // Save to DB (source of truth)
       const saved = await api.sendMessage(orderId, otherUserId, content);
-      // Track this ID so Realtime doesn't duplicate it
       if (saved?.id) seenMsgIds.current.add(saved.id);
 
-      // ⚡ Also broadcast via WS for instant delivery to the other user's tab
+      // Swap temp message for the confirmed server message
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...saved, _optimistic: false } : m));
+
+      // Broadcast via WS for instant delivery to the other user
       if (wsRef.current?.readyState === WebSocket.OPEN && saved) {
         wsRef.current.send(JSON.stringify(saved));
       }
-    } catch (error) {
-      console.error("Failed to send message", error);
+    } catch (err: any) {
+      // Remove the optimistic message and restore the text
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setSendError(err?.message || 'Failed to send message. Tap to retry.');
+      setNewMessage(content); // restore so user can retry
+    } finally {
+      setIsSending(false);
     }
+  };
+
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newMessage.trim() || isSending) return;
+    const content = newMessage.trim();
+    setNewMessage('');
+    setShowQuickReplies(false);
+    await sendOptimistic(content);
   };
 
   const handleQuickReply = async (reply: string) => {
     setShowQuickReplies(false);
-    try {
-      const saved = await api.sendMessage(orderId, otherUserId, reply);
-      if (saved?.id) seenMsgIds.current.add(saved.id);
-      if (wsRef.current?.readyState === WebSocket.OPEN && saved) {
-        wsRef.current.send(JSON.stringify(saved));
-      }
-    } catch (error) {
-      console.error("Failed to send message", error);
-    }
+    await sendOptimistic(reply);
   };
 
   const formatTime = (timestamp: string) => {
@@ -173,6 +190,14 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
         </div>
       </div>
 
+      {/* Error Banner */}
+      {sendError && (
+        <div className="flex items-center gap-2 bg-red-50 border-b border-red-200 px-4 py-2 text-xs text-red-700 shrink-0">
+          <span className="flex-1">⚠️ {sendError}</span>
+          <button onClick={() => setSendError(null)} className="text-red-500 hover:text-red-700 font-bold">✕</button>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {loading ? (
@@ -194,13 +219,15 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
           messages.map((message) => {
             const isOwn = message.sender_id === currentUserId;
             return (
-              <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+              <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} transition-opacity ${message._optimistic ? 'opacity-50' : 'opacity-100'}`}>
                 <div className="max-w-[85%]">
                   <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm ${isOwn ? 'bg-green-600 text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm border border-gray-200'}`}>
                     <p className="break-words">{message.content}</p>
                   </div>
                   <div className={`flex items-center mt-1 space-x-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                    <p className="text-[10px] text-gray-500">{formatTime(message.created_at)}</p>
+                    <p className="text-[10px] text-gray-500">
+                      {message._optimistic ? 'Sending…' : formatTime(message.created_at)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -247,8 +274,8 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
             </button>
           </div>
           
-          <button type="submit" disabled={!newMessage.trim()} className={`p-2.5 rounded-full transition-colors ${newMessage.trim() ? 'bg-green-600 text-white hover:bg-green-700 shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
-            <Send size={18} className="ml-0.5" />
+          <button type="submit" disabled={!newMessage.trim() || isSending} className={`p-2.5 rounded-full transition-colors ${newMessage.trim() && !isSending ? 'bg-green-600 text-white hover:bg-green-700 shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+            {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="ml-0.5" />}
           </button>
         </form>
       </div>

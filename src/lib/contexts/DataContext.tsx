@@ -153,12 +153,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshAdminData = async () => {
         setIsRefreshing(true);
         try {
-            const dashboard = await api.getAdminDashboard().catch(() => ({}));
-            const orders = dashboard.orders ?? [];
-            const bids = dashboard.bids ?? [];
+            const [stats, users] = await Promise.allSettled([
+                api.adminGetStats(),
+                api.adminGetUsers({}),
+            ]);
 
-            setAllOrders(orders);
-            setAllBids(bids);
+            const statsData = stats.status === 'fulfilled' ? stats.value : {};
+            const usersData = users.status === 'fulfilled' ? users.value : [];
+
+            setAllOrders(statsData.orders ?? []);
+            setAllBids(statsData.bids ?? []);
+            setAllUsers(Array.isArray(usersData) ? usersData : []);
         } catch (error) {
             console.error('Error fetching admin data:', error);
         } finally {

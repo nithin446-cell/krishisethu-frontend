@@ -15,13 +15,11 @@ import { User, Produce } from '../../types';
 interface TraderListingsForFarmersProps {
   traders: User[];
   myProduce: Produce[];
-  onContactTrader: (trader: User) => void;
 }
 
 const TraderListingsForFarmers: React.FC<TraderListingsForFarmersProps> = ({ 
   traders, 
-  myProduce,
-  onContactTrader 
+  myProduce
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('all');
@@ -186,12 +184,6 @@ const TraderListingsForFarmers: React.FC<TraderListingsForFarmersProps> = ({
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => onContactTrader(trader)}
-                    className="p-2 bg-green-100 rounded-full hover:bg-green-200 transition-colors"
-                  >
-                    <MessageCircle size={16} className="text-green-600" />
-                  </button>
                   
                   <button className="p-2 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors">
                     <Phone size={16} className="text-blue-600" />

@@ -16,7 +16,7 @@ import EnhancedChatInterface from './components/Chat/EnhancedChatInterface';
 import TransactionTracking from './components/Transaction/TransactionTracking';
 import GovernmentSchemes from './components/Government/GovernmentSchemes';
 import TraderListingsForFarmers from './components/Trader/TraderListingsForFarmers';
-import AdminDashboard from './components/Admin/AdminDashboard';
+import OldAdminDashboard from './components/Admin/AdminDashboard';
 import TraderVerification from './components/Admin/TraderVerification';
 import DisputeResolution from './components/Admin/DisputeResolution';
 import PriceDataUpload from './components/Admin/PriceDataUpload';
@@ -24,10 +24,13 @@ import SchemeManagement from './components/Admin/SchemeManagement';
 import TraderDashboard from './components/Trader/TraderDashboard';
 import UserProfile from './components/profile/UserProfile';
 
+import AdminDashboard from './components/AdminDashboard';
+
 // Supabase Import
 import { supabase } from './lib/supabase';
 import { api } from './lib/api';
 import BankAccountSetup from './components/Farmer/BankAccountSetup';
+import OrderTracking from './components/OrderTracking';
 import FarmerKYC from './components/FarmerKYC';
 import { Landmark, ChevronRight, CheckCircle } from 'lucide-react';
 import { User, Produce, Bid } from './types';
@@ -43,9 +46,10 @@ function AppContent() {
   const [produces, setProduces] = useState<Produce[]>([]); 
   const [selectedProduce, setSelectedProduce] = useState<Produce | null>(null);
   const [showBidding, setShowBidding] = useState(false);
-  const [chatUser, setChatUser] = useState<User | null>(null);
+  const [chatConfig, setChatConfig] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
   const [showTransaction, setShowTransaction] = useState(false);
   const [adminSection, setAdminSection] = useState('dashboard');
+  const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
 
   const handleSplashComplete = () => setAppState('language');
   const handleLanguageContinue = () => setAppState('auth');
@@ -91,7 +95,7 @@ function AppContent() {
   const renderAdminContent = () => {
     switch (adminSection) {
       case 'dashboard':
-        return <AdminDashboard />; 
+        return <OldAdminDashboard />; 
       case 'verification':
         return <TraderVerification onBack={() => setAdminSection('dashboard')} />;
       case 'disputes':
@@ -101,7 +105,7 @@ function AppContent() {
       case 'schemes':
         return <SchemeManagement onBack={() => setAdminSection('dashboard')} />;
       default:
-        return <AdminDashboard />;
+        return <OldAdminDashboard />;
     }
   };
 
@@ -109,14 +113,14 @@ function AppContent() {
     if (!currentUser) return null;
     const user = currentUser;
 
-    if (chatUser) {
+    if (chatConfig) {
       return (
         <EnhancedChatInterface
-          orderId="legacy_chat_bypass" 
+          orderId={chatConfig.orderId} 
           currentUserId={user.id}
-          otherUserId={chatUser.id}
-          otherUserName={chatUser.name}
-          onClose={() => setChatUser(null)}
+          otherUserId={chatConfig.otherUserId}
+          otherUserName={chatConfig.otherUserName}
+          onClose={() => setChatConfig(null)}
         />
       );
     }
@@ -128,14 +132,6 @@ function AppContent() {
           onPlaceBid={handlePlaceBid}
           currentUserId={user.id} 
           onBack={() => setShowBidding(false)}
-          onContactFarmer={() => setChatUser({
-            id: selectedProduce.farmerId,
-            name: 'Farmer',
-            type: 'farmer',
-            location: 'India',
-            verified: true,
-            phone: ''
-          })}
         />
       );
     }
@@ -160,11 +156,17 @@ function AppContent() {
               </div>
             )}
             <div className={hasBankAccount === false ? "" : "mt-4"}>
-              <EnhancedDashboard farmerId={user.id} />
+              <EnhancedDashboard farmerId={user.id} onViewOrderTracking={(orderId) => {
+                setTrackingOrderId(orderId);
+                setActiveTab('order-tracking');
+              }} />
             </div>
           </>
         );
-        if (user.type === 'trader') return <div className="p-4 space-y-6"><TraderDashboard traderId={user.id} availableProduce={produces} /></div>;
+        if (user.type === 'trader') return <div className="p-4 space-y-6"><TraderDashboard traderId={user.id} availableProduce={produces} onViewOrderTracking={(orderId) => {
+          setTrackingOrderId(orderId);
+          setActiveTab('order-tracking');
+        }} /></div>;
         if (user.type === 'admin') return renderAdminContent();
         return null;
 
@@ -232,6 +234,11 @@ function AppContent() {
         return <FarmerKYC userId={currentUser.id} userName={(currentUser as any).full_name || currentUser.name}
           onComplete={() => setActiveTab('profile')} onBack={() => setActiveTab('profile')} />;
 
+      case 'order-tracking':
+        return <OrderTracking orderId={trackingOrderId} currentUserId={currentUser.id}
+          userRole={currentUser.type as 'farmer' | 'trader'} onBack={() => setActiveTab(currentUser.type === 'farmer' ? 'dashboard' : 'dashboard')}
+          onOpenChat={(orderId, id, name) => setChatConfig({ orderId, otherUserId: id, otherUserName: name })} />;
+
       case 'schemes':
         return <GovernmentSchemes schemes={[]} />;
 
@@ -240,7 +247,6 @@ function AppContent() {
           <TraderListingsForFarmers
             traders={[]}
             myProduce={produces.filter(p => p.farmerId === currentUser.id)}
-            onContactTrader={(trader) => setChatUser(trader)}
           />
         );
 
@@ -248,6 +254,10 @@ function AppContent() {
         return <div>Page not found</div>;
     }
   };
+
+  if (appState === 'main' && currentUser && ((currentUser as any).role === 'admin' || currentUser.type === 'admin')) {
+    return <AdminDashboard onLogout={handleLogout} />;
+  }
 
   return (
     <>
@@ -257,15 +267,15 @@ function AppContent() {
       {appState === 'main' && currentUser && (
         <div className="min-h-screen bg-gray-50 relative">
           
-          {!chatUser && !showBidding && !showTransaction && (
+          {!chatConfig && !showBidding && !showTransaction && (
             <Header userName={currentUser.name} location={currentUser.location} unreadCount={3} onLogout={handleLogout} />
           )}
 
-          <main className={`${!chatUser && !showBidding && !showTransaction ? 'pt-4 pb-20' : 'pb-20 h-screen'}`}>
+          <main className={`${!chatConfig && !showBidding && !showTransaction ? 'pt-4 pb-20' : 'pb-20 h-screen'}`}>
             {renderContent()}
           </main>
 
-          {!chatUser && !showBidding && !showTransaction && (
+          {!chatConfig && !showBidding && !showTransaction && (
             <Navigation
               activeTab={activeTab}
               onTabChange={(tab) => {

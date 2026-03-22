@@ -68,7 +68,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, userTyp
             onClick={() => onTabChange('add')} 
           />
           <NavItem 
-            icon={<Activity size={24} />} 
+            icon={<TrendingUp size={24} />} 
             label="Market" 
             isActive={activeTab === 'market'} 
             onClick={() => onTabChange('market')} 
@@ -83,7 +83,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, userTyp
             onClick={() => onTabChange('browse')} 
           />
           <NavItem 
-            icon={<Activity size={24} />} 
+            icon={<TrendingUp size={24} />} 
             label="Market" 
             isActive={activeTab === 'market'} 
             onClick={() => onTabChange('market')} 

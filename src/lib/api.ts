@@ -11,11 +11,29 @@ const getAuthHeaders = (isFormData: boolean = false) => {
 const fetchJSON = async (url: string, options?: RequestInit) => {
   try {
     const res = await fetch(url, options);
-    if (res.headers.get("content-type")?.includes("text/html")) throw new Error(`HTML Error from ${url}. Server might be off.`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'API Request Failed');
-    return data.data !== undefined ? data.data : data;
+    
+    // 1. Check for HTML error pages (often returned by proxies or crashed servers)
+    const contentType = res.headers.get("content-type");
+    if (contentType?.includes("text/html")) {
+      throw new Error("Server returned an error page. Backend might be down or misconfigured.");
+    }
+
+    // 2. Handle empty success responses
+    if (res.status === 204 || res.status === 304) return { success: true, data: [] };
+
+    // 3. Parse JSON
+    const data = await res.json().catch(() => null);
+
+    // 4. Handle non-ok responses
+    if (!res.ok) {
+      const errorMsg = data?.error || data?.message || `API Error (${res.status})`;
+      throw new Error(errorMsg);
+    }
+
+    // 5. Return data correctly unwrap success/data pattern
+    return data && data.success === false ? data : (data?.data !== undefined ? data.data : data);
   } catch (error: any) {
+    console.error(`[fetchJSON Error] ${url}:`, error);
     throw error;
   }
 };
@@ -54,6 +72,22 @@ export const api = {
   processPayment: async (order_id: string, amount: number) => fetchJSON(`${API_BASE_URL}/payment/create`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ order_id, amount }) }),
   verifyPayment: async (order_id: string, payment_details: any) => fetchJSON(`${API_BASE_URL}/payment/verify`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ order_id, ...payment_details }) }),
   confirmFarmerPayment: async (orderId: string, payment_status: 'paid' | 'not_paid') => fetchJSON(`${API_BASE_URL}/farmer/order/${orderId}/confirm-payment`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ payment_status }) }),
+
+  // ==========================================
+  // MANDI PRICE APIs (AGMARKNET)
+  // ==========================================
+  getMandiPrices: async (options: { state?: string; commodity?: string } = {}) => {
+    let url = `${API_BASE_URL}/mandi/prices`;
+    const params = new URLSearchParams();
+    if (options.state) params.append('state', options.state);
+    if (options.commodity) params.append('commodity', options.commodity);
+    if (params.toString()) url += `?${params.toString()}`;
+    return fetchJSON(url, { headers: getAuthHeaders() });
+  },
+  getTopMandiPrices: async (commodity: string, limit = 10) => 
+    fetchJSON(`${API_BASE_URL}/mandi/prices/top?commodity=${encodeURIComponent(commodity)}&limit=${limit}`, { headers: getAuthHeaders() }),
+  clearMandiCache: async () =>
+    fetchJSON(`${API_BASE_URL}/admin/mandi/clear-cache`, { method: 'POST', headers: getAuthHeaders() }),
 
   // ==========================================
   // CHAT APIs

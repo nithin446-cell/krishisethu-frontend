@@ -69,7 +69,14 @@ class WebSocketManager {
             this.isConnecting = true;
 
             try {
-                const wsUrl = `${this.url}?user_id=${userId}`;
+                const token = localStorage.getItem('supabase_token');
+                if (!token) {
+                    this.isConnecting = false;
+                    reject(new Error('No authentication token found'));
+                    return;
+                }
+
+                const wsUrl = `${this.url}?user_id=${userId}&token=${token}`;
                 this.ws = new WebSocket(wsUrl);
 
                 this.ws.onopen = () => {

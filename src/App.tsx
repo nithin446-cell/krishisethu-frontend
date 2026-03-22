@@ -9,7 +9,7 @@ import Navigation from './components/Layout/Navigation';
 import Header from './components/Layout/Header';
 import EnhancedDashboard from './components/Farmer/EnhancedDashboard';
 import EnhancedAddProduce from './components/Farmer/EnhancedAddProduce';
-import EnhancedMarketPrices from './components/Market/EnhancedMarketPrices';
+import MandiPriceFeed from './components/Market/MandiPriceFeed';
 import TraderListings from './components/Trader/TraderListings';
 import EnhancedBiddingSystem from './components/Bidding/EnhancedBiddingSystem';
 import EnhancedChatInterface from './components/Chat/EnhancedChatInterface'; 
@@ -171,8 +171,16 @@ function AppContent() {
         return null;
 
       case 'market':
-        // 👉 NEW: Removed prices={[]} prop so it fetches its own live data
-        return <EnhancedMarketPrices />;
+        const myCropNames = produces
+          .filter(p => p.farmerId === currentUser?.id)
+          .map(p => p.name);
+        return (
+          <MandiPriceFeed 
+            userCrops={myCropNames} 
+            userState={currentUser?.location || 'Karnataka'} 
+            onBack={() => setActiveTab('dashboard')} 
+          />
+        );
 
       case 'browse':
         return (

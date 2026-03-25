@@ -103,6 +103,7 @@ export const api = {
    * Returns a reference_id to use in subsequent steps.
    */
   initiatePennyDrop: async (data: {
+    user_id: string;
     account_holder_name: string;
     account_number?: string;
     ifsc_code?: string;
@@ -136,6 +137,8 @@ export const api = {
    * saves final bank_account record.
    */
   registerBankWithRazorpay: async (data: {
+    user_id: string;
+    role: string;
     reference_id: string;
     card_last6: string;
     card_expiry_month: string;

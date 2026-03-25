@@ -16,9 +16,7 @@ import EnhancedChatInterface from './components/Chat/EnhancedChatInterface';
 import TransactionTracking from './components/Transaction/TransactionTracking';
 import GovernmentSchemes from './components/Government/GovernmentSchemes';
 import TraderListingsForFarmers from './components/Trader/TraderListingsForFarmers';
-import OldAdminDashboard from './components/Admin/AdminDashboard';
 import TraderVerification from './components/Admin/TraderVerification';
-import DisputeResolution from './components/Admin/DisputeResolution';
 import PriceDataUpload from './components/Admin/PriceDataUpload';
 import SchemeManagement from './components/Admin/SchemeManagement';
 import TraderDashboard from './components/Trader/TraderDashboard';
@@ -93,20 +91,7 @@ function AppContent() {
   }
 
   const renderAdminContent = () => {
-    switch (adminSection) {
-      case 'dashboard':
-        return <OldAdminDashboard />; 
-      case 'verification':
-        return <TraderVerification onBack={() => setAdminSection('dashboard')} />;
-      case 'disputes':
-        return <DisputeResolution onBack={() => setAdminSection('dashboard')} />;
-      case 'prices':
-        return <PriceDataUpload onBack={() => setAdminSection('dashboard')} />;
-      case 'schemes':
-        return <SchemeManagement onBack={() => setAdminSection('dashboard')} />;
-      default:
-        return <OldAdminDashboard />;
-    }
+    return <AdminDashboard onLogout={handleLogout} />;
   };
 
   const renderContent = () => {

@@ -43,8 +43,11 @@ interface AdminUser {
 interface PayoutRecord {
   id: string; order_id: string;
   farmer_name: string; farmer_phone: string;
+  trader_name: string; trader_phone: string;
+  crop_name: string;
   final_amount: number; payout_amount: number;
   status: string; failure_reason?: string;
+  razorpay_payment_id?: string | null;
   created_at: string; bank_name?: string;
 }
 
@@ -132,21 +135,31 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Fetch stats
   useEffect(() => {
-    api.adminGetStats().then(setStats).catch(console.error).finally(() => setLoadingStats(false));
+    api.adminGetStats()
+      .then(setStats)
+      .catch(err => {
+        console.error("Stats error:", err);
+        showToast("Backend connection failed. Please ensure server is running.", false);
+      })
+      .finally(() => setLoadingStats(false));
   }, []);
 
   // Fetch tab data
   useEffect(() => {
     setTabLoading(true);
     const fetch = async () => {
-      if (tab === 'kyc')      setKycList(await api.adminGetKYCList(kycFilter));
-      if (tab === 'disputes') setDisputes(await api.adminGetDisputes());
-      if (tab === 'users')    setUsers(await api.adminGetUsers({ search: userSearch, role: userRoleFilter }));
-      if (tab === 'payouts')  setPayouts(await api.adminGetPayouts(payoutFilter));
+      try {
+        if (tab === 'kyc')      setKycList(await api.adminGetKYCList(kycFilter));
+        if (tab === 'disputes') setDisputes(await api.adminGetDisputes());
+        if (tab === 'users')    setUsers(await api.adminGetUsers({ search: userSearch, role: userRoleFilter }));
+        if (tab === 'payouts')  setPayouts(await api.adminGetPayouts(payoutFilter));
+      } catch (err) {
+        console.error("Fetch error:", err);
+        showToast(`Could not load ${tab} — backend unreachable.`, false);
+      }
     };
-    fetch().catch(console.error).finally(() => setTabLoading(false));
+    fetch().finally(() => setTabLoading(false));
   }, [tab, kycFilter, userSearch, userRoleFilter, payoutFilter]);
 
   // ── KYC actions ───────────────────────────────────────────────────
@@ -538,10 +551,12 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-mono text-slate-500">#{p.order_id.slice(0,8).toUpperCase()}</span>
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">{p.crop_name}</span>
                         <Badge status={p.status} />
                       </div>
                       <p className="font-semibold text-white">{p.farmer_name}</p>
-                      <p className="text-xs text-slate-500">{p.farmer_phone} · {p.bank_name || 'Bank pending'}</p>
+                      <p className="text-[11px] text-slate-500">Trader: <span className="text-slate-300">{p.trader_name}</span> · {p.farmer_phone}</p>
+                      <p className="text-[11px] text-slate-500">{p.bank_name || 'Bank info pending'}</p>
                       {p.failure_reason && (
                         <p className="text-xs text-red-400 mt-1">{p.failure_reason}</p>
                       )}
@@ -665,8 +680,8 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             </div>
             <div className="p-5 space-y-4">
               <div className="bg-slate-800 rounded-xl p-4 space-y-2">
-                <div className="flex justify-between text-sm"><span className="text-slate-400">Order</span><span className="font-mono text-white">#{disputeModal.order_id.slice(0,8).toUpperCase()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-slate-400">Crop / Amount</span><span className="text-white">{disputeModal.crop_name} · {inr(disputeModal.final_amount)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-400">Order</span><span className="font-mono text-white">#{disputeModal.order_id?.slice(0,8).toUpperCase() || 'N/A'}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-400">Crop / Amount</span><span className="text-white">{disputeModal.crop_name} · {inr(disputeModal.final_amount || 0)}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-slate-400">Farmer</span><span className="text-green-400">{disputeModal.farmer_name} ({disputeModal.farmer_phone})</span></div>
                 <div className="flex justify-between text-sm"><span className="text-slate-400">Trader</span><span className="text-blue-400">{disputeModal.trader_name} ({disputeModal.trader_phone})</span></div>
               </div>
@@ -710,15 +725,20 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             </div>
             <div className="p-5 space-y-4">
               <div className="bg-slate-800 rounded-xl p-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-slate-400">Farmer</span><span className="text-white font-semibold">{payoutModal.farmer_name}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Phone</span><span className="font-mono text-slate-300">{payoutModal.farmer_phone}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Order</span><span className="font-mono text-slate-300">#{payoutModal.order_id.slice(0,8).toUpperCase()}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Farmer</span><span className="text-white font-semibold">{payoutModal.farmer_name || 'N/A'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Trader</span><span className="text-white font-semibold">{payoutModal.trader_name || 'N/A'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Crop</span><span className="text-green-400 font-semibold">{payoutModal.crop_name || 'N/A'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Phone (Farmer)</span><span className="font-mono text-slate-300">{payoutModal.farmer_phone || 'N/A'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Order</span><span className="font-mono text-slate-300">#{payoutModal.order_id?.slice(0,8).toUpperCase() || 'N/A'}</span></div>
+                {payoutModal.razorpay_payment_id && (
+                  <div className="flex justify-between"><span className="text-slate-400">Razorpay ID</span><span className="font-mono text-blue-400">{payoutModal.razorpay_payment_id}</span></div>
+                )}
                 <div className="flex justify-between"><span className="text-slate-400">Bank</span><span className="text-slate-300">{payoutModal.bank_name || 'Not linked'}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Stuck since</span><span className="text-slate-300">{fmtDate(payoutModal.created_at)}</span></div>
               </div>
               <div className="bg-green-900/20 border border-green-700 rounded-xl p-4 text-center">
                 <p className="text-xs text-slate-400 mb-1">Amount to release</p>
-                <p className="text-3xl font-black font-mono text-green-400">{inr(payoutModal.payout_amount)}</p>
+                <p className="text-3xl font-black font-mono text-green-400">{inr(payoutModal.payout_amount || 0)}</p>
               </div>
               {payoutModal.failure_reason && (
                 <div className="bg-red-900/20 border border-red-800 rounded-xl p-3">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, ShieldCheck, Shield, Upload, Loader2, CheckCircle, Clock, Key, Lock, Building } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Shield, Upload, Loader2, CheckCircle, Clock, Key, Lock, Building, Star } from 'lucide-react';
 import { api } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import BankAccountSetup from '../Farmer/BankAccountSetup';
@@ -19,6 +19,7 @@ const UserProfile = ({ userId, initialUser }: { userId: string, initialUser: any
 
   // Bank Setup State
   const [showBankSetup, setShowBankSetup] = useState(false);
+  const [ratingData, setRatingData] = useState<{ avg_rating: number | null; total_ratings: number } | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -29,6 +30,12 @@ const UserProfile = ({ userId, initialUser }: { userId: string, initialUser: any
         
         // Default dropdown selection based on role
         if (data.role === 'trader') setDocumentType('Aadhaar card / PAN Card');
+
+        // Fetch rating data
+        try {
+          const rating = await api.getUserRating(userId);
+          if (rating?.avg_rating !== undefined) setRatingData(rating);
+        } catch (_) {}
       } catch (err) {
         console.error("Error fetching live user:", err);
       } finally {
@@ -108,6 +115,20 @@ const UserProfile = ({ userId, initialUser }: { userId: string, initialUser: any
           {status === 'verified' && <ShieldCheck size={20} className="text-green-500 ml-2" />}
         </h3>
         <p className="text-gray-500 text-sm capitalize">{liveUser.role} • {liveUser.location}</p>
+        {/* Rating badge */}
+        {ratingData && ratingData.avg_rating !== null && (
+          <div className="flex items-center justify-center gap-1.5 mt-2">
+            {[1,2,3,4,5].map(s => (
+              <Star key={s} size={14}
+                className={s <= Math.round(ratingData.avg_rating!) ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}
+              />
+            ))}
+            <span className="text-xs font-semibold text-amber-700 ml-0.5">
+              {ratingData.avg_rating.toFixed(1)}
+            </span>
+            <span className="text-xs text-gray-400">({ratingData.total_ratings} reviews)</span>
+          </div>
+        )}
       </div>
 
       {/* Verification Status Card */}

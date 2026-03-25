@@ -210,10 +210,10 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
   const tabs = [
     { id: 'overview',  label: 'Overview',  icon: <Activity size={16} />, badge: undefined },
-    { id: 'kyc',       label: 'KYC',       icon: <ShieldCheck size={16} />, badge: stats?.pending_kyc },
-    { id: 'disputes',  label: 'Disputes',  icon: <AlertTriangle size={16} />, badge: stats?.open_disputes },
+    { id: 'kyc',       label: 'KYC',       icon: <ShieldCheck size={16} />, badge: stats?.pending_kyc || 0 },
+    { id: 'disputes',  label: 'Disputes',  icon: <AlertTriangle size={16} />, badge: stats?.open_disputes || 0 },
     { id: 'users',     label: 'Users',     icon: <Users size={16} />, badge: undefined },
-    { id: 'payouts',   label: 'Payouts',   icon: <IndianRupee size={16} />, badge: stats?.pending_payouts },
+    { id: 'payouts',   label: 'Payouts',   icon: <IndianRupee size={16} />, badge: stats?.pending_payouts || 0 },
   ] as const;
 
   return (
@@ -273,21 +273,21 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             ) : stats ? (
               <>
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                  <StatCard label="Platform GMV" value={inr(stats.total_gmv)} sub="All-time" icon={<TrendingUp size={18} />} accent="text-green-500" />
-                  <StatCard label="Revenue" value={inr(stats.platform_revenue)} sub="3% commission" icon={<IndianRupee size={18} />} accent="text-emerald-500" />
-                  <StatCard label="Total orders" value={stats.total_orders.toLocaleString('en-IN')} sub={`${stats.active_orders} active`} icon={<Package size={18} />} accent="text-blue-400" />
-                  <StatCard label="Avg order" value={inr(stats.avg_order_value)} sub="per transaction" icon={<Activity size={18} />} accent="text-indigo-400" />
-                  <StatCard label="Users" value={(stats.total_farmers + stats.total_traders).toLocaleString('en-IN')} sub={`${stats.total_farmers}F · ${stats.total_traders}T`} icon={<Users size={18} />} accent="text-violet-400" />
+                  <StatCard label="Platform GMV" value={inr(stats?.total_gmv || 0)} sub="All-time" icon={<TrendingUp size={18} />} accent="text-green-500" />
+                  <StatCard label="Revenue" value={inr(stats?.platform_revenue || 0)} sub="3% commission" icon={<IndianRupee size={18} />} accent="text-emerald-500" />
+                  <StatCard label="Total orders" value={(stats?.total_orders || 0).toLocaleString('en-IN')} sub={`${stats?.active_orders || 0} active`} icon={<Package size={18} />} accent="text-blue-400" />
+                  <StatCard label="Avg order" value={inr(stats?.avg_order_value || 0)} sub="per transaction" icon={<Activity size={18} />} accent="text-indigo-400" />
+                  <StatCard label="Users" value={((stats?.total_farmers || 0) + (stats?.total_traders || 0)).toLocaleString('en-IN')} sub={`${stats?.total_farmers || 0}F · ${stats?.total_traders || 0}T`} icon={<Users size={18} />} accent="text-violet-400" />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                   <div onClick={() => setTab('kyc')} className="cursor-pointer">
-                    <StatCard label="Pending KYC" value={stats.pending_kyc} sub="Awaiting review" icon={<ShieldCheck size={18} />} urgent={stats.pending_kyc > 0} />
+                    <StatCard label="Pending KYC" value={stats?.pending_kyc || 0} sub="Awaiting review" icon={<ShieldCheck size={18} />} urgent={(stats?.pending_kyc || 0) > 0} />
                   </div>
                   <div onClick={() => setTab('disputes')} className="cursor-pointer">
-                    <StatCard label="Open disputes" value={stats.open_disputes} sub="Needs resolution" icon={<AlertTriangle size={18} />} urgent={stats.open_disputes > 0} />
+                    <StatCard label="Open disputes" value={stats?.open_disputes || 0} sub="Needs resolution" icon={<AlertTriangle size={18} />} urgent={(stats?.open_disputes || 0) > 0} />
                   </div>
                   <div onClick={() => setTab('payouts')} className="cursor-pointer">
-                    <StatCard label="Stuck payouts" value={stats.pending_payouts} sub="KYC / bank pending" icon={<Landmark size={18} />} urgent={stats.pending_payouts > 0} />
+                    <StatCard label="Stuck payouts" value={stats?.pending_payouts || 0} sub="KYC / bank pending" icon={<Landmark size={18} />} urgent={(stats?.pending_payouts || 0) > 0} />
                   </div>
                 </div>
 
@@ -330,7 +330,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
             {tabLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin text-green-500" size={24} /></div> : (
               <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                {kycList.length === 0 ? (
+                {(!kycList || kycList.length === 0) ? (
                   <div className="text-center py-16 text-slate-500">
                     <ShieldCheck size={32} className="mx-auto mb-3 opacity-30" />
                     <p className="text-sm">No {kycFilter} KYC submissions</p>
@@ -349,7 +349,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {kycList.map(k => (
+                      {(Array.isArray(kycList) ? kycList : []).map(k => (
                         <tr key={k.id} className="hover:bg-slate-800/50 transition-colors">
                           <td className="px-5 py-3">
                             <p className="font-semibold text-white">{k.user_name}</p>
@@ -358,7 +358,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                           <td className="px-4 py-3 font-mono text-xs text-slate-300">{k.pan_number}</td>
                           <td className="px-4 py-3 font-mono text-xs text-slate-300">****{k.aadhaar_last4}</td>
                           <td className="px-4 py-3">
-                            {k.face_match_score !== null ? (
+                            {typeof k.face_match_score === 'number' ? (
                               <span className={`text-xs font-bold font-mono ${k.face_match_score >= 80 ? 'text-green-400' : k.face_match_score >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
                                 {k.face_match_score.toFixed(0)}%
                               </span>
@@ -388,12 +388,12 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             <p className="text-lg font-bold text-white">Dispute Resolution</p>
             {tabLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin text-green-500" size={24} /></div> : (
               <div className="space-y-3">
-                {disputes.length === 0 ? (
+                {(!disputes || disputes.length === 0) ? (
                   <div className="bg-slate-900 rounded-xl border border-slate-800 text-center py-16 text-slate-500">
                     <AlertTriangle size={32} className="mx-auto mb-3 opacity-30" />
                     <p className="text-sm">No open disputes</p>
                   </div>
-                ) : disputes.map(d => (
+                ) : (Array.isArray(disputes) ? disputes : []).map(d => (
                   <div key={d.id} className="bg-slate-900 rounded-xl border border-slate-800 p-5">
                     <div className="flex items-start justify-between flex-wrap gap-3">
                       <div className="flex-1 min-w-0">
@@ -469,7 +469,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {users.map(u => (
+                    {(Array.isArray(users) ? users : []).map(u => (
                       <tr key={u.id} className="hover:bg-slate-800/50 transition-colors">
                         <td className="px-5 py-3">
                           <p className="font-semibold text-white">{u.full_name}</p>
@@ -503,7 +503,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     ))}
                   </tbody>
                 </table>
-                {users.length === 0 && !tabLoading && (
+                {(!users || users.length === 0) && !tabLoading && (
                   <div className="text-center py-12 text-slate-500 text-sm">No users found</div>
                 )}
               </div>
@@ -528,12 +528,12 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
             {tabLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin text-green-500" size={24} /></div> : (
               <div className="space-y-3">
-                {payouts.length === 0 ? (
+                {(!payouts || payouts.length === 0) ? (
                   <div className="bg-slate-900 rounded-xl border border-slate-800 text-center py-16 text-slate-500">
                     <Landmark size={32} className="mx-auto mb-3 opacity-30" />
                     <p className="text-sm">No stuck payouts</p>
                   </div>
-                ) : payouts.map(p => (
+                ) : (Array.isArray(payouts) ? payouts : []).map(p => (
                   <div key={p.id} className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-4 flex-wrap">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -610,7 +610,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
               </div>
 
               {/* Face match score */}
-              {kycModal.face_match_score !== null && (
+              {typeof kycModal.face_match_score === 'number' && (
                 <div className={`rounded-xl p-4 flex items-center gap-3 ${kycModal.face_match_score >= 80 ? 'bg-green-900/30 border border-green-700' : kycModal.face_match_score >= 60 ? 'bg-amber-900/30 border border-amber-700' : 'bg-red-900/30 border border-red-700'}`}>
                   <div className={`text-3xl font-black font-mono ${kycModal.face_match_score >= 80 ? 'text-green-400' : kycModal.face_match_score >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
                     {kycModal.face_match_score.toFixed(0)}%

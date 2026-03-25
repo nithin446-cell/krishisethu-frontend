@@ -65,6 +65,7 @@ export const api = {
   updateOrderStatusWithPhoto: async (id: string, formData: FormData) => fetchJSON(`${API_BASE_URL}/orders/${id}/deliver`, { method: 'PUT', headers: getAuthHeaders(true), body: formData }),
   raiseDispute: async (id: string, data: any) => fetchJSON(`${API_BASE_URL}/orders/${id}/dispute`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
   submitRating: async (id: string, data: any) => fetchJSON(`${API_BASE_URL}/orders/${id}/rating`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) }),
+  getUserRating: async (userId: string) => fetchJSON(`${API_BASE_URL}/users/${userId}/rating`, { headers: getAuthHeaders() }),
 
   // ==========================================
   // PAYMENT APIs

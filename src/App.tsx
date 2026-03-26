@@ -261,7 +261,13 @@ function AppContent() {
         <div className="min-h-screen bg-gray-50 relative">
           
           {!chatConfig && !showBidding && !showTransaction && (
-            <Header userName={currentUser.name} location={currentUser.location} unreadCount={3} onLogout={handleLogout} />
+            <Header 
+              userName={currentUser.name} 
+              location={currentUser.location} 
+              role={currentUser.type}
+              unreadCount={3} 
+              onLogout={handleLogout} 
+            />
           )}
 
           <main className={`${!chatConfig && !showBidding && !showTransaction ? 'pt-4 pb-20' : 'pb-20 h-screen'}`}>

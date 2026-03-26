@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 
-type OrderStatus = 'placed' | 'confirmed' | 'dispatched' | 'delivered' | 'paid' | 'cancelled' | 'disputed';
+type OrderStatus = 'placed' | 'confirmed' | 'pending_payment' | 'dispatched' | 'delivered' | 'paid' | 'cancelled' | 'disputed';
 type UserRole = 'farmer' | 'trader';
 
 interface StatusEvent {
@@ -50,6 +50,7 @@ interface OrderTrackingProps {
 const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: React.ReactNode; color: string; bg: string; border: string; desc: string }> = {
   placed:     { label: 'Order Placed',     icon: <Package size={18} />,     color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-200',   desc: 'Waiting for farmer to confirm' },
   confirmed:  { label: 'Confirmed',        icon: <CheckCircle size={18} />, color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200',  desc: 'Farmer accepted the order' },
+  pending_payment: { label: 'Payment Pending', icon: <Clock size={18} />,     color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200', desc: 'Awaiting payment from trader' },
   dispatched: { label: 'Dispatched',       icon: <Truck size={18} />,       color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200',  desc: 'Produce is on the way' },
   delivered:  { label: 'Delivered',        icon: <MapPin size={18} />,      color: 'text-teal-700',   bg: 'bg-teal-50',   border: 'border-teal-200',    desc: 'Trader confirmed receipt' },
   paid:       { label: 'Payment Released', icon: <IndianRupee size={18} />, color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200',   desc: 'Payment sent to farmer' },
@@ -57,7 +58,7 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: React.ReactNode;
   disputed:   { label: 'Disputed',         icon: <AlertCircle size={18} />, color: 'text-rose-700',   bg: 'bg-rose-50',   border: 'border-rose-200',    desc: 'Under dispute resolution' },
 };
 
-const STATUS_ORDER: OrderStatus[] = ['placed', 'confirmed', 'dispatched', 'delivered', 'paid'];
+const STATUS_ORDER: OrderStatus[] = ['placed', 'pending_payment', 'confirmed', 'dispatched', 'delivered', 'paid'];
 
 const fmt = (iso?: string) => iso
   ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
@@ -153,7 +154,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
     </div>
   );
 
-  const cfg = STATUS_CONFIG[order.status];
+  const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.placed;
   const stepIdx = STATUS_ORDER.indexOf(order.status);
   const otherParty = userRole === 'farmer'
     ? { id: order.trader_id, name: order.trader_name, phone: order.trader_phone, loc: order.trader_city }

@@ -5,11 +5,12 @@ import { useLanguage } from '../../contexts/LanguageContext';
 interface HeaderProps {
   userName: string;
   location: string;
+  role?: string;
   unreadCount?: number;
   onLogout?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ userName, location, unreadCount = 0, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ userName, location, role, unreadCount = 0, onLogout }) => {
   const { t } = useLanguage();
 
   return (
@@ -17,9 +18,8 @@ const Header: React.FC<HeaderProps> = ({ userName, location, unreadCount = 0, on
       <div className="flex justify-between items-center">
         <div className="flex-1">
           <h1 className="text-xl font-bold">
-            {t('dashboard.welcome').includes('Farmer') ? t('dashboard.welcome') : t('dashboard.welcomeTrader')}, {userName}
+            {role === 'trader' ? t('dashboard.welcomeTrader') : t('dashboard.welcome')}, {userName}
           </h1>
-          <h1 className="text-xl font-bold">Hello, {userName}</h1>
           <div className="flex items-center mt-1">
             <MapPin size={16} className="mr-1" />
             <span className="text-sm opacity-90">{location}</span>

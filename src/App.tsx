@@ -32,6 +32,7 @@ import OrderTracking from './components/OrderTracking';
 import FarmerKYC from './components/FarmerKYC';
 import { Landmark, ChevronRight, CheckCircle } from 'lucide-react';
 import { User, Produce, Bid } from './types';
+import { requestForToken, onMessageListener } from './lib/firebase';
 
 function AppContent() {
   const [appState, setAppState] = useState<'splash' | 'language' | 'auth' | 'main'>('splash');
@@ -65,6 +66,21 @@ function AppContent() {
         });
     }
   }, [currentUser?.id]); // Using currentUser?.id here to avoid exhaustive deps warning
+
+  // 🔔 FCM Notification Registration
+  useEffect(() => {
+    if (currentUser?.id) {
+      requestForToken(currentUser.id);
+      
+      onMessageListener()
+        .then((payload: any) => {
+          console.log('Foreground Message:', payload);
+          // Show a local alert or toast if needed
+          alert(`${payload.notification.title}: ${payload.notification.body}`);
+        })
+        .catch((err) => console.log('failed: ', err));
+    }
+  }, [currentUser?.id]);
 
   const handleLogout = async () => {
     await logout();

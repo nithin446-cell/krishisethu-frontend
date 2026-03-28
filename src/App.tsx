@@ -47,8 +47,10 @@ function AppContent() {
   const [showBidding, setShowBidding] = useState(false);
   const [chatConfig, setChatConfig] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
   const [showTransaction, setShowTransaction] = useState(false);
-  const [adminSection, setAdminSection] = useState('dashboard');
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
+  const [schemes, setSchemes] = useState<any[]>([]);
+  const [traders, setTraders] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleSplashComplete = () => setAppState('language');
   const handleLanguageContinue = () => setAppState('auth');
@@ -65,20 +67,48 @@ function AppContent() {
           setHasBankAccount(false);
         });
     }
-  }, [currentUser?.id]); // Using currentUser?.id here to avoid exhaustive deps warning
+  }, [currentUser?.id]); 
+
+  // 📡 Real-time Data Fetching (Schemes, Traders, Notifications)
+  useEffect(() => {
+    if (currentUser?.id && appState === 'main') {
+      // 1. Fetch Schemes
+      api.getGovernmentSchemes().then(setSchemes).catch(err => console.error("Schemes error:", err));
+
+      // 2. Fetch Traders
+      api.getTraders().then(setTraders).catch(err => console.error("Traders error:", err));
+
+      // 3. Simple Notification Logic: Count pending/processing orders
+      if (currentUser.type === 'farmer') {
+        api.getFarmerOrders(currentUser.id).then(orders => {
+          const count = orders.filter((o: any) => o.payment_status === 'processing' || o.status === 'pending').length;
+          setUnreadCount(count);
+        }).catch(() => setUnreadCount(0));
+      } else if (currentUser.type === 'trader') {
+        api.getTraderBids(currentUser.id).then(bids => {
+          const count = bids.filter((b: any) => b.status === 'accepted').length;
+          setUnreadCount(count);
+        }).catch(() => setUnreadCount(0));
+      }
+    }
+  }, [currentUser?.id, appState]);
 
   // 🔔 FCM Notification Registration
   useEffect(() => {
     if (currentUser?.id) {
       requestForToken(currentUser.id);
       
-      onMessageListener()
-        .then((payload: any) => {
-          console.log('Foreground Message:', payload);
-          // Show a local alert or toast if needed
-          alert(`${payload.notification.title}: ${payload.notification.body}`);
-        })
-        .catch((err) => console.log('failed: ', err));
+      const unsubscribe = onMessageListener((payload: any) => {
+        console.log('Foreground Message:', payload);
+        // Show a local alert or toast if needed
+        alert(`${payload.notification.title}: ${payload.notification.body}`);
+      });
+
+      return () => {
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      };
     }
   }, [currentUser?.id]);
 
@@ -245,17 +275,18 @@ function AppContent() {
 
       case 'order-tracking':
         return <OrderTracking orderId={trackingOrderId} currentUserId={currentUser.id}
-          userRole={currentUser.type as 'farmer' | 'trader'} onBack={() => setActiveTab(currentUser.type === 'farmer' ? 'dashboard' : 'dashboard')}
+          userRole={currentUser.type as 'farmer' | 'trader'} 
+          onBack={() => setActiveTab('dashboard')}
           onOpenChat={(orderId, id, name) => setChatConfig({ orderId, otherUserId: id, otherUserName: name })} />;
 
       case 'schemes':
-        return <GovernmentSchemes schemes={[]} />;
+        return <GovernmentSchemes schemes={schemes} />;
 
       case 'traders':
         return (
           <TraderListingsForFarmers
-            traders={[]}
-            myProduce={produces.filter(p => p.farmerId === currentUser.id)}
+            traders={traders}
+            myProduce={[] /* Handled inside the component or fetch if needed */}
           />
         );
 
@@ -281,7 +312,7 @@ function AppContent() {
               userName={currentUser.name} 
               location={currentUser.location} 
               role={currentUser.type}
-              unreadCount={3} 
+              unreadCount={unreadCount} 
               onLogout={handleLogout} 
             />
           )}
@@ -294,8 +325,7 @@ function AppContent() {
             <Navigation
               activeTab={activeTab}
               onTabChange={(tab) => {
-                if (currentUser.type === 'admin') setAdminSection(tab);
-                else setActiveTab(tab);
+                setActiveTab(tab);
               }}
               userType={currentUser.type}
             />

@@ -44,7 +44,7 @@ class ErrorBoundary extends Component<Props, State> {
     this.props.onError?.(error, errorInfo);
     
     // Log to error tracking service in production
-    if (process.env.NODE_ENV === 'production') {
+    if (import.meta.env.PROD) {
       // Sentry.captureException(error, { extra: errorInfo });
     }
   }
@@ -106,7 +106,7 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
             
             {/* Error details in development */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="mt-6 text-left">
                 <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
                   Error Details (Development Only)

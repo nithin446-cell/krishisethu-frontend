@@ -22,7 +22,7 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
   const [businessName, setBusinessName] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'farmer' | 'trader' | 'admin' | ''>('');
+  const [selectedRole, setSelectedRole] = useState<'farmer' | 'trader' | ''>('');
   
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -230,7 +230,7 @@ const LoginRegistration: React.FC<LoginRegistrationProps> = ({ onLogin }) => {
             </div>
 
             {/* Role Cards */}
-            {['farmer', 'trader', 'admin'].map((role) => (
+            {['farmer', 'trader'].map((role) => (
               <button
                 key={role}
                 onClick={() => setSelectedRole(role as any)}

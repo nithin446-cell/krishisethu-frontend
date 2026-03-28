@@ -30,8 +30,12 @@ const fetchJSON = async (url: string, options?: RequestInit) => {
       throw new Error(errorMsg);
     }
 
-    // 5. Return data correctly unwrap success/data pattern
-    return data && data.success === false ? data : (data?.data !== undefined ? data.data : data);
+    // 5. Return data correctly: unwrap { success: true, data: [...] } pattern if present
+    if (data && typeof data === 'object') {
+      if (data.success === false) throw new Error(data.error || "Request failed");
+      return data.data !== undefined ? data.data : data;
+    }
+    return data;
   } catch (error: any) {
     console.error(`[fetchJSON Error] ${url}:`, error);
     throw error;
@@ -237,4 +241,13 @@ adminManualPayout: async (orderId: string) =>
     
   clearAllPrices: async () => 
     fetchJSON(`${API_BASE_URL}/admin/prices`, { method: 'DELETE', headers: getAuthHeaders() }),
+
+  // ==========================================
+  // GOVERNMENT & PUBLIC APIs
+  // ==========================================
+  getGovernmentSchemes: async () => 
+    fetchJSON(`${API_BASE_URL}/schemes`, { method: 'GET', headers: getAuthHeaders() }),
+    
+  getTraders: async () => 
+    fetchJSON(`${API_BASE_URL}/traders`, { method: 'GET', headers: getAuthHeaders() }),
 };

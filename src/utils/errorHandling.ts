@@ -89,7 +89,7 @@ export const ERROR_MESSAGES = {
  */
 export const logError = (error: AppError) => {
   // In production, send to error monitoring service like Sentry
-  if (process.env.NODE_ENV === 'production') {
+  if (import.meta.env.PROD) {
     // Sentry.captureException(error);
     console.error('Production Error:', error);
   } else {

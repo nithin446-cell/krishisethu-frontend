@@ -2,15 +2,15 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { supabase } from './supabase';
 
-// ✅ Real Firebase Config provided by User
+// ✅ Firebase config loaded from environment variables — never hardcode API keys
 const firebaseConfig = {
-  apiKey: "AIzaSyBnyjdIaSaRZKeZp8q-qGLJaIz5LmvqIsc",
-  authDomain: "krishisethu-main.firebaseapp.com",
-  projectId: "krishisethu-main",
-  storageBucket: "krishisethu-main.firebasestorage.app",
-  messagingSenderId: "3657268180",
-  appId: "1:3657268180:web:697f8e8225e7fa24d6b441",
-  measurementId: "G-RQBW2FXQNH"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
@@ -20,29 +20,29 @@ export const requestForToken = async (userId: string) => {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      const currentToken = await getToken(messaging, { 
-        vapidKey: 'BNTURXes0L-OAfv4T69mWDZTWtULVTTbVGBAioaTmA7PcwZP3ResE-3gTNs31jeDmf9VOR-oteO_-Ng1W7VmAXY' 
-      });
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      const currentToken = await getToken(messaging, { vapidKey });
       if (currentToken) {
-        console.log('FCM Token:', currentToken);
-        // Save token to Supabase users table
+        // Save FCM token to Supabase users table
         const { error } = await supabase
           .from('users')
           .update({ fcm_token: currentToken })
           .eq('id', userId);
-        
+
         if (error) throw error;
       }
     }
   } catch (err) {
-    console.error('An error occurred while retrieving token:', err);
+    console.error('An error occurred while retrieving FCM token:', err);
   }
 };
 
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      console.log("Payload received:", payload);
-      resolve(payload);
-    });
+/**
+ * Subscribe to foreground FCM messages.
+ * Returns an unsubscribe function — always call it on component unmount.
+ */
+export const onMessageListener = (callback: (payload: any) => void): (() => void) => {
+  return onMessage(messaging, (payload) => {
+    callback(payload);
   });
+};

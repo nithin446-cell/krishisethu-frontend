@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../supabase';
 import { User } from '../../types';
+import { disconnectWebSocket } from '../websocket';
 
 interface AuthContextType {
     user: User | null;
@@ -216,6 +217,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             // 🧹 Wipe all cached data so the next user starts fresh
             sessionStorage.clear();
+
+            // 🔌 Close WebSocket connection
+            disconnectWebSocket();
 
             setUser(null);
             setUserRole(null);

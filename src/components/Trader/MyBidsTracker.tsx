@@ -117,7 +117,7 @@ const MyBidsTracker: React.FC<MyBidsTrackerProps> = ({ traderId }) => {
 
                             {bid.message && (
                                 <p className="mt-3 text-xs text-gray-500 italic bg-gray-50 rounded-lg p-2">
-                                    "{bid.message}"
+                                    &ldquo;{bid.message}&rdquo;
                                 </p>
                             )}
                         </div>

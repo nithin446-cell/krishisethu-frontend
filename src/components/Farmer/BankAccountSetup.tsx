@@ -81,7 +81,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
     setSelectedBank(bank);
     setAccountDetails(prev => ({
       ...prev,
-      ifsc_code: bank.ifscPrefix + '0', // pre-fill prefix
+      ifsc_code: bank.ifscPrefix, // pre-fill prefix only
     }));
     setStep('enter-details');
     setError(null);

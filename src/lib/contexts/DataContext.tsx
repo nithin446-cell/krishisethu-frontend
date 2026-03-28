@@ -93,18 +93,49 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const refreshFarmerData = async (farmerId: string) => {
         setIsRefreshing(true);
         try {
-            // 🔑 Cache key is scoped to this specific farmer's userId
+            // 1. Fetch Bids
             const bidsCacheKey = cacheKey(farmerId, 'bids');
             const cachedBids = getFromCache(bidsCacheKey);
             if (cachedBids) setFarmerBids(cachedBids);
 
-            const bids = await api.getFarmerBids(farmerId).catch(() => []);
+            const bids = await api.getFarmerBids(farmerId).catch((err) => {
+                console.error('Error fetching farmer bids:', err);
+                return [];
+            });
             if (bids.length > 0 || !cachedBids) {
                 setFarmerBids(bids);
                 setCache(bidsCacheKey, bids);
             }
+
+            // 2. Fetch Listings
+            const listingsCacheKey = cacheKey(farmerId, 'listings');
+            const cachedListings = getFromCache(listingsCacheKey);
+            if (cachedListings) setFarmerListings(cachedListings);
+
+            const listings = await api.getFarmerListings(farmerId).catch((err) => {
+                console.error('Error fetching farmer listings:', err);
+                return [];
+            });
+            if (listings.length > 0 || !cachedListings) {
+                setFarmerListings(listings);
+                setCache(listingsCacheKey, listings);
+            }
+
+            // 3. Fetch Orders
+            const ordersCacheKey = cacheKey(farmerId, 'orders');
+            const cachedOrders = getFromCache(ordersCacheKey);
+            if (cachedOrders) setFarmerOrders(cachedOrders);
+
+            const orders = await api.getFarmerOrders(farmerId).catch((err) => {
+                console.error('Error fetching farmer orders:', err);
+                return [];
+            });
+            if (orders.length > 0 || !cachedOrders) {
+                setFarmerOrders(orders);
+                setCache(ordersCacheKey, orders);
+            }
         } catch (error) {
-            console.error('Error fetching farmer data:', error);
+            console.error('Error in refreshFarmerData:', error);
         } finally {
             setIsRefreshing(false);
         }

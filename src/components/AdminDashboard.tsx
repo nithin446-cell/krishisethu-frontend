@@ -148,7 +148,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   // Fetch tab data
   useEffect(() => {
     setTabLoading(true);
-    const fetch = async () => {
+    const loadTabData = async () => {
       try {
         if (tab === 'kyc')      setKycList(await api.adminGetKYCList(kycFilter));
         if (tab === 'disputes') setDisputes(await api.adminGetDisputes());
@@ -159,7 +159,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         showToast(`Could not load ${tab} — backend unreachable.`, false);
       }
     };
-    fetch().finally(() => setTabLoading(false));
+    loadTabData().finally(() => setTabLoading(false));
   }, [tab, kycFilter, userSearch, userRoleFilter, payoutFilter]);
 
   // ── KYC actions ───────────────────────────────────────────────────

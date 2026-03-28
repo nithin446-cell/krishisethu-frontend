@@ -76,13 +76,21 @@ class WebSocketManager {
                     return;
                 }
 
-                const wsUrl = `${this.url}?user_id=${userId}&token=${token}`;
+                // ✅ C-3 FIX: Token is NOT passed in the URL to avoid logging in proxies/history.
+                // Instead user_id is in the URL for routing only; auth happens via the first message.
+                const wsUrl = `${this.url}?user_id=${userId}`;
                 this.ws = new WebSocket(wsUrl);
 
                 this.ws.onopen = () => {
                     console.log('WebSocket connected');
                     this.reconnectAttempts = 0;
                     this.isConnecting = false;
+                    // Send auth token as the first message after connection opens
+                    this.ws?.send(JSON.stringify({
+                        type: 'AUTH',
+                        token,
+                        timestamp: new Date().toISOString(),
+                    }));
                     resolve();
                 };
 
@@ -224,8 +232,8 @@ export function useWebSocket(userId: string | null) {
             });
 
         return () => {
-            // Don't disconnect on unmount - keep connection alive
-            // ws.disconnect();
+            // Keep connection alive across component re-mounts
+            // Explicit disconnect is done on logout via disconnectWebSocket()
         };
     }, [userId]);
 
@@ -233,6 +241,17 @@ export function useWebSocket(userId: string | null) {
         isConnected,
         ws: wsRef.current
     };
+}
+
+/**
+ * Call this on user logout to fully close the WebSocket connection
+ * and release all listeners, preventing stale connections to old user sessions.
+ */
+export function disconnectWebSocket() {
+    if (wsManager) {
+        wsManager.disconnect();
+        wsManager = null;
+    }
 }
 
 /**
@@ -327,9 +346,7 @@ export function useAdminActivityNotifications(adminId: string | null) {
 }
 
 
-// ============================================
-// BACKEND WEBSOCKET SERVER EXAMPLE (Node.js)
-// ============================================
+
 
 /**
  * Example WebSocket server implementation for Express

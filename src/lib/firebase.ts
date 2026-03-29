@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 import { supabase } from './supabase';
 
 // ✅ Firebase config loaded from environment variables — never hardcode API keys
@@ -13,27 +13,38 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+// Guard: do not crash the app if Firebase is not configured
+let app: FirebaseApp | null = null;
+let messaging: Messaging | null = null;
+
+try {
+  if (import.meta.env.VITE_FIREBASE_API_KEY) {
+    app = initializeApp(firebaseConfig);
+    messaging = getMessaging(app);
+  } else {
+    console.warn('[Firebase] VITE_FIREBASE_API_KEY not set — push notifications disabled.');
+  }
+} catch (err) {
+  console.error('[Firebase] Initialization failed:', err);
+}
 
 export const requestForToken = async (userId: string) => {
+  if (!messaging) return;
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
       const currentToken = await getToken(messaging, { vapidKey });
       if (currentToken) {
-        // Save FCM token to Supabase users table
         const { error } = await supabase
           .from('users')
           .update({ fcm_token: currentToken })
           .eq('id', userId);
-
         if (error) throw error;
       }
     }
   } catch (err) {
-    console.error('An error occurred while retrieving FCM token:', err);
+    console.error('[Firebase] An error occurred while retrieving FCM token:', err);
   }
 };
 
@@ -42,6 +53,7 @@ export const requestForToken = async (userId: string) => {
  * Returns an unsubscribe function — always call it on component unmount.
  */
 export const onMessageListener = (callback: (payload: any) => void): (() => void) => {
+  if (!messaging) return () => {};
   return onMessage(messaging, (payload) => {
     callback(payload);
   });

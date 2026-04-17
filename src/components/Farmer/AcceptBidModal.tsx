@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle, X, AlertTriangle } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useLanguage } from '../../contexts/LanguageContext'; // Import context
 
 interface AcceptBidModalProps {
     bid: {
@@ -17,6 +18,7 @@ interface AcceptBidModalProps {
 }
 
 const AcceptBidModal: React.FC<AcceptBidModalProps> = ({ bid, listingId, unit, onClose, onSuccess }) => {
+    const { t } = useLanguage(); // Initialize translation hook
     const [isAccepting, setIsAccepting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +30,7 @@ const AcceptBidModal: React.FC<AcceptBidModalProps> = ({ bid, listingId, unit, o
             onSuccess();
             onClose();
         } catch (err: any) {
-            setError(err.message || 'Failed to accept bid. Please try again.');
+            setError(err.message || t('common.error'));
         } finally {
             setIsAccepting(false);
         }
@@ -39,7 +41,9 @@ const AcceptBidModal: React.FC<AcceptBidModalProps> = ({ bid, listingId, unit, o
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                    <h2 className="text-lg font-bold text-gray-800">बोली स्वीकार करें</h2>
+                    <h2 className="text-lg font-bold text-gray-800">
+                        {t('bidding.acceptTitle')}
+                    </h2>
                     <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
                         <X size={20} className="text-gray-500" />
                     </button>
@@ -50,25 +54,25 @@ const AcceptBidModal: React.FC<AcceptBidModalProps> = ({ bid, listingId, unit, o
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
                         <AlertTriangle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-amber-800">
-                            Accepting this bid will <strong>reject all other offers</strong> and mark this listing as sold.
+                            {t('bidding.acceptWarning')}
                         </p>
                     </div>
 
                     <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Trader</span>
-                            <span className="font-semibold text-gray-800">{bid.users?.full_name || 'Trader'}</span>
+                            <span className="text-gray-600">{t('profile.trader')}</span>
+                            <span className="font-semibold text-gray-800">{bid.users?.full_name || t('profile.trader')}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Bid Amount</span>
+                            <span className="text-gray-600">{t('bidding.bidAmount')}</span>
                             <span className="font-semibold text-green-700">₹{bid.amount} / {unit}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Quantity</span>
+                            <span className="text-gray-600">{t('addProduce.quantity')}</span>
                             <span className="font-semibold text-gray-800">{bid.quantity} {unit}</span>
                         </div>
                         <div className="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
-                            <span className="text-gray-700 font-medium">Total Value</span>
+                            <span className="text-gray-700 font-medium">{t('transaction.totalAmount')}</span>
                             <span className="font-bold text-green-700 text-base">₹{(bid.amount * bid.quantity).toLocaleString()}</span>
                         </div>
                     </div>
@@ -87,7 +91,7 @@ const AcceptBidModal: React.FC<AcceptBidModalProps> = ({ bid, listingId, unit, o
                         disabled={isAccepting}
                         className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                     >
-                        रद्द करें
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleAccept}
@@ -99,7 +103,7 @@ const AcceptBidModal: React.FC<AcceptBidModalProps> = ({ bid, listingId, unit, o
                         ) : (
                             <>
                                 <CheckCircle size={18} />
-                                Accept Bid
+                                {t('bidding.acceptBidBtn')}
                             </>
                         )}
                     </button>

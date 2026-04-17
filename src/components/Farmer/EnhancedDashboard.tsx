@@ -251,10 +251,10 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
                       The Trader has completed the Razorpay checkout! Please confirm receipt.
                     </p>
                     <div className="flex space-x-2">
-                      <button onClick={() => handlePaymentConfirmation(order.id, 'paid')} disabled={actionLoading === order.id} className="flex-1 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 flex justify-center items-center text-sm">
+                      <button onClick={(e) => { e.stopPropagation(); handlePaymentConfirmation(order.id, 'paid'); }} disabled={actionLoading === order.id} className="flex-1 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 flex justify-center items-center text-sm">
                         <CheckCircle size={16} className="mr-1" /> Yes, Received
                       </button>
-                      <button onClick={() => handlePaymentConfirmation(order.id, 'not_paid')} disabled={actionLoading === order.id} className="flex-1 py-2 bg-red-100 text-red-700 rounded font-medium hover:bg-red-200 flex justify-center items-center text-sm">
+                      <button onClick={(e) => { e.stopPropagation(); handlePaymentConfirmation(order.id, 'not_paid'); }} disabled={actionLoading === order.id} className="flex-1 py-2 bg-red-100 text-red-700 rounded font-medium hover:bg-red-200 flex justify-center items-center text-sm">
                         <AlertTriangle size={16} className="mr-1" /> Not Received
                       </button>
                     </div>

@@ -40,11 +40,12 @@ const LanguageSelection: React.FC<LanguageSelectionProps> = ({
           <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4 mx-auto">
             <span className="text-2xl text-white">🌐</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('language.chooseLanguage')}</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            {t('language.chooseLanguage')}
+          </h2>
           <p className="text-gray-600">
-            {language === 'en' && 'अपनी भाषा चुनें / ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆರಿಸಿ'}
-            {language === 'hi' && 'Choose Your Language / ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆರಿಸಿ'}
-            {language === 'kn' && 'Choose Your Language / अपनी भाषा चुनें'}
+            {/* Switched from hardcoded mixed text to translation key */}
+            {t('language.selectSubtitle')}
           </p>
         </div>
 
@@ -112,7 +113,8 @@ const LanguageSelection: React.FC<LanguageSelectionProps> = ({
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {t('common.continue')} / {language === 'en' ? 'जारी रखें / ಮುಂದುವರಿಸಿ' : language === 'hi' ? 'Continue / ಮುಂದುವರಿಸಿ' : 'Continue / जारी रखें'}
+          {/* Switched from hardcoded logic to t() key */}
+          {t('common.continue')}
         </button>
       </div>
     </div>

@@ -71,7 +71,13 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
       const res = await loadRazorpayScript();
       if (!res) return alert('Razorpay SDK failed to load. Are you online?');
 
-      const paymentIntent = await api.processPayment(order.id, order.final_amount);
+      const paymentIntent = await api.processPayment({
+        order_id: order.id,
+        amount: order.final_amount,
+        listing_id: order.listing_id,
+        quantity: order.bids?.[0]?.quantity || order.bids?.quantity || 1,
+        agreed_price: order.final_amount
+      });
       
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID, 

@@ -68,7 +68,7 @@ const translations = {
     'dashboard.sellProduce': 'Sell Produce',
     'dashboard.marketPrices': 'Market Prices',
     'dashboard.schemes': 'Schemes',
-    'dashboard.todayPrices': 'Today\'s Market Prices',
+    'dashboard.todayPrices': "Today's Market Prices",
     'dashboard.myListedProduce': 'My Listed Produce',
     'dashboard.recentActivity': 'Recent Activity',
     
@@ -111,7 +111,10 @@ const translations = {
     'bidding.highest': 'Highest',
     'bidding.totalBids': 'Total Bids',
     'bidding.suggestedBid': 'Suggested Bid',
-    
+    'bidding.acceptTitle': 'Accept Bid',
+    'bidding.acceptBidBtn': 'Accept Bid',
+    'bidding.acceptWarning': 'Accepting this bid will reject all other offers and mark this listing as sold.',
+   
     // Chat
     'chat.typeMessage': 'Type message...',
     'chat.online': 'Online',
@@ -122,7 +125,7 @@ const translations = {
     'chat.whenMeet': 'When can we meet?',
     'chat.thankYou': 'Thank you',
     'chat.okay': 'Okay',
-    'chat.talkTomorrow': 'Let\'s talk tomorrow',
+    'chat.talkTomorrow': "Let's talk tomorrow",
     
     // Profile
     'profile.title': 'Profile',
@@ -162,6 +165,7 @@ const translations = {
     
     // Language Selection
     'language.chooseLanguage': 'Choose Your Language',
+    'language.selectSubtitle': 'Please select your preferred language',
     'language.voiceAssistance': 'Voice Assistance Available',
     'language.tapSpeaker': 'Tap the speaker icon for audio help',
   },
@@ -265,7 +269,10 @@ const translations = {
     'bidding.highest': 'सर्वोच्च',
     'bidding.totalBids': 'कुल बोलियां',
     'bidding.suggestedBid': 'सुझावित बोली',
-    
+    'bidding.acceptTitle': 'बोली स्वीकार करें',
+    'bidding.acceptBidBtn': 'बोली स्वीकार करें',
+    'bidding.acceptWarning': 'इस बोली को स्वीकार करने से अन्य सभी प्रस्ताव खारिज हो जाएंगे और इस लिस्टिंग को बिका हुआ माना जाएगा।',
+
     // Chat
     'chat.typeMessage': 'संदेश लिखें...',
     'chat.online': 'ऑनलाइन',
@@ -316,6 +323,7 @@ const translations = {
     
     // Language Selection
     'language.chooseLanguage': 'अपनी भाषा चुनें',
+    'language.selectSubtitle': 'कृपया अपनी पसंदीदा भाषा चुनें',
     'language.voiceAssistance': 'आवाज सहायता उपलब्ध',
     'language.tapSpeaker': 'ऑडियो सहायता के लिए स्पीकर आइकन दबाएं',
   },
@@ -419,7 +427,10 @@ const translations = {
     'bidding.highest': 'ಅತ್ಯಧಿಕ',
     'bidding.totalBids': 'ಒಟ್ಟು ಬಿಡ್‌ಗಳು',
     'bidding.suggestedBid': 'ಸೂಚಿಸಲಾದ ಬಿಡ್',
-    
+    'bidding.acceptTitle': 'ಬಿಡ್ ಸ್ವೀಕರಿಸಿ',
+    'bidding.acceptBidBtn': 'ಬಿಡ್ ಸ್ವೀಕರಿಸಿ',
+    'bidding.acceptWarning': 'ಈ ಬಿಡ್ ಅನ್ನು ಸ್ವೀಕರಿಸುವುದರಿಂದ ಉಳಿದ ಎಲ್ಲಾ ಆಫರ್‌ಗಳನ್ನು ತಿರಸ್ಕರಿಸಲಾಗುತ್ತದೆ ಮತ್ತು ಈ ಪಟ್ಟಿಯನ್ನು ಮಾರಾಟವಾಗಿದೆ ಎಂದು ಗುರುತಿಸಲಾಗುತ್ತದೆ.',
+
     // Chat
     'chat.typeMessage': 'ಸಂದೇಶ ಟೈಪ್ ಮಾಡಿ...',
     'chat.online': 'ಆನ್‌ಲೈನ್',
@@ -470,6 +481,7 @@ const translations = {
     
     // Language Selection
     'language.chooseLanguage': 'ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆರಿಸಿ',
+    'language.selectSubtitle': 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
     'language.voiceAssistance': 'ಧ್ವನಿ ಸಹಾಯ ಲಭ್ಯವಿದೆ',
     'language.tapSpeaker': 'ಆಡಿಯೋ ಸಹಾಯಕ್ಕಾಗಿ ಸ್ಪೀಕರ್ ಐಕಾನ್ ಟ್ಯಾಪ್ ಮಾಡಿ',
   }
@@ -486,7 +498,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [language]);
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations[typeof language]] || key;
+    return (translations[language] as any)[key] || key;
   };
 
   return (

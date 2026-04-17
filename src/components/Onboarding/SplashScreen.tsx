@@ -24,7 +24,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         
         <h1 className="text-3xl font-bold mb-2">KisanConnect</h1>
         <p className="text-lg opacity-90 font-medium">Direct Market Access for Farmers</p>
-        <p className="text-sm opacity-75 mt-1">किसानों के लिए सीधा बाज़ार पहुंच</p>
       </div>
 
       {/* Illustration */}
@@ -34,7 +33,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <span className="text-2xl">👨‍🌾</span>
           </div>
           <p className="text-sm font-medium">Farmer</p>
-          <p className="text-xs opacity-75">किसान</p>
         </div>
         
         <div className="flex flex-col items-center">
@@ -49,7 +47,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <span className="text-2xl">🏪</span>
           </div>
           <p className="text-sm font-medium">Trader</p>
-          <p className="text-xs opacity-75">व्यापारी</p>
         </div>
       </div>
 

@@ -3,9 +3,19 @@ import {
   ArrowLeft, CheckCircle, Clock, Truck, Package,
   IndianRupee, MapPin, Phone, MessageSquare, AlertCircle,
   ChevronDown, ChevronUp, Loader2, Camera, Upload,
-  RefreshCw, Star, X, Navigation
+  RefreshCw, Star, X, Navigation, FileText, Download
 } from 'lucide-react';
 import { api } from '../lib/api';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 type OrderStatus = 'placed' | 'confirmed' | 'pending_payment' | 'dispatched' | 'delivered' | 'paid' | 'cancelled' | 'disputed';
 type UserRole = 'farmer' | 'trader';
@@ -19,6 +29,7 @@ interface StatusEvent {
 
 interface Order {
   id: string;
+  listing_id: string;
   listing_title: string;
   crop_name: string;
   quantity: number;
@@ -65,6 +76,14 @@ const fmt = (iso?: string) => iso
   : null;
 
 const inr = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
+const ModalWrap: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({ children, onClose }) => (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      {children}
+    </div>
+  </div>
+);
 
 const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, userRole, onBack, onOpenChat }) => {
   const [order, setOrder] = useState<Order | null>(null);
@@ -123,13 +142,75 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
     doAction(() => api.updateOrderStatus(orderId!, 'dispatched', { dispatch_note: dispatchNote, vehicle_number: vehicleNumber, estimated_days: estimatedDays }), 'Marked as dispatched! Trader notified via SMS.');
   };
 
-  const handleDelivery = () => doAction(async () => {
-    const fd = new FormData();
-    fd.append('status', 'delivered');
-    fd.append('delivery_note', deliveryNote);
-    if (deliveryPhotoFile) fd.append('delivery_photo', deliveryPhotoFile);
-    await api.updateOrderStatusWithPhoto(orderId!, fd);
-  }, 'Delivery confirmed! Payment is being released to the farmer.');
+  const handleRazorpayPayment = async () => {
+    if (!order) return;
+    setActionLoading(true);
+    try {
+      const res = await loadRazorpayScript();
+      if (!res) throw new Error('Razorpay SDK failed to load.');
+
+      showToast('Opening secure payment gateway...');
+      const paymentIntent = await api.processPayment({
+        order_id: orderId!,
+        amount: order.final_amount,
+        listing_id: order.listing_id,
+        quantity: order.quantity,
+        agreed_price: order.agreed_price
+      });
+      
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID, 
+        amount: paymentIntent.amount, 
+        currency: "INR",
+        name: "Krishisethu Marketplace",
+        description: `Payment for Order #${orderId!.slice(0, 8)}`,
+        order_id: paymentIntent.razorpay_order_id,
+        handler: async function (response: any) {
+          try {
+            await api.verifyPayment(orderId!, {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature
+            });
+            showToast('Payment Successful! Awaiting Farmer Confirmation.');
+            await fetchOrder(); 
+          } catch (error: any) {
+            setError("Payment verification failed: " + error.message);
+          }
+        },
+        prefill: { name: order.trader_name, contact: order.trader_phone },
+        theme: { color: "#16a34a" }
+      };
+
+      const rzpWindow = new (window as any).Razorpay(options);
+      rzpWindow.on('payment.failed', (response: any) => setError(`Payment failed! Reason: ${response.error.description}`));
+      rzpWindow.open();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelivery = async () => {
+    setActionLoading(true); setError(null);
+    try {
+      const fd = new FormData();
+      fd.append('status', 'delivered');
+      fd.append('delivery_note', deliveryNote);
+      if (deliveryPhotoFile) fd.append('delivery_photo', deliveryPhotoFile);
+      
+      await api.updateOrderStatusWithPhoto(orderId!, fd);
+      await fetchOrder();
+      closeModal();
+      
+      // Auto open payment gateway
+      handleRazorpayPayment();
+    } catch (e: any) {
+      setError(e.message);
+      setActionLoading(false);
+    }
+  };
 
   const handleDispute = () => {
     if (!disputeReason || !disputeDetails.trim()) { setError('Please select a reason and describe the issue.'); return; }
@@ -139,6 +220,116 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
   const handleRating = () => {
     if (!rating) { setError('Please select a star rating.'); return; }
     doAction(() => api.submitRating(orderId!, { rating, note: ratingNote }), 'Rating submitted. Thank you!');
+  };
+
+  const handleDownloadReceipt = () => {
+    if (!order) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const receiptHtml = `
+      <html>
+        <head>
+          <title>Receipt - Order #${order.id.slice(0, 8).toUpperCase()}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+            .header { border-bottom: 3px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+            .logo { color: #16a34a; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+            .status-badge { background: #dcfce7; color: #166534; padding: 6px 16px; border-radius: 50px; font-weight: bold; font-size: 13px; text-transform: uppercase; border: 1px solid #bbf7d0; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; background: #f9fafb; padding: 25px; rounded-2xl; border: 1px solid #f3f4f6; }
+            .section-title { font-size: 11px; color: #9ca3af; text-transform: uppercase; margin-bottom: 8px; font-weight: 800; letter-spacing: 0.5px; }
+            .party-name { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 4px; display: block; }
+            .party-loc { font-size: 13px; color: #4b5563; }
+            .item-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+            th { text-align: left; background: #111827; color: white; padding: 14px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+            td { padding: 16px 14px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+            .total-box { background: #f0fdf4; border: 2px solid #16a34a; padding: 20px; border-radius: 12px; text-align: right; }
+            .total-label { font-size: 14px; color: #166534; font-weight: 600; margin-bottom: 4px; }
+            .total-val { font-size: 24px; font-weight: 800; color: #15803d; }
+            .footer { margin-top: 80px; text-align: center; color: #9ca3af; font-size: 11px; border-top: 1px solid #f3f4f6; padding-top: 30px; }
+            .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; color: rgba(22, 163, 74, 0.05); font-weight: bold; pointer-events: none; white-space: nowrap; }
+            @media print {
+              body { padding: 0; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="watermark">KRISHI SETHU</div>
+          <div class="header">
+            <div class="logo">KrishiSethu</div>
+            <div class="status-badge">Payment Success ✅</div>
+          </div>
+          
+          <div style="margin-bottom: 30px;">
+            <h1 style="margin: 0; font-size: 20px;">Transaction Receipt</h1>
+            <p style="color: #6b7280; font-size: 13px; margin-top: 5px;">Reference #${order.id.toUpperCase()}</p>
+          </div>
+
+          <div class="grid">
+            <div>
+              <div class="section-title">Sold By (Farmer)</div>
+              <span class="party-name">${order.farmer_name}</span>
+              <span class="party-loc">${order.farmer_village}</span><br>
+              <span class="party-loc">Phone: ${order.farmer_phone}</span>
+            </div>
+            <div>
+              <div class="section-title">Purchased By (Trader)</div>
+              <span class="party-name">${order.trader_name}</span>
+              <span class="party-loc">${order.trader_city}</span><br>
+              <span class="party-loc">Phone: ${order.trader_phone}</span>
+            </div>
+          </div>
+
+          <table class="item-table">
+            <thead>
+              <tr>
+                <th>Item Specification</th>
+                <th>Unit Price</th>
+                <th>Quantity</th>
+                <th style="text-align: right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight: 600;">
+                  ${order.crop_name}<br>
+                  <span style="font-weight: 400; font-size: 12px; color: #6b7280;">${order.listing_title}</span>
+                </td>
+                <td>₹${order.agreed_price.toLocaleString('en-IN')} / ${order.unit}</td>
+                <td>${order.quantity} ${order.unit}</td>
+                <td style="text-align: right; font-weight: 700;">₹${order.final_amount.toLocaleString('en-IN')}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="total-box">
+            <div class="total-label">Final Payout Confirmed</div>
+            <div class="total-val">₹${order.final_amount.toLocaleString('en-IN')}</div>
+          </div>
+
+          <div class="footer">
+            This is a computer-generated transaction receipt for KrishiSethu Marketplace.<br>
+            Generated on ${new Date().toLocaleString('en-IN', { dateStyle: 'full', timeStyle: 'short' })}<br>
+            © 2026 KrishiSethu Inc. All Rights Reserved.
+          </div>
+
+          <script>
+            window.onload = () => {
+              setTimeout(() => {
+                window.print();
+              }, 500);
+              window.onafterprint = () => {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
   };
 
   if (loading) return (
@@ -167,17 +358,11 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
       return { label: 'Mark as Dispatched', color: 'bg-orange-500 hover:bg-orange-600', icon: <Truck size={18} />, action: () => setModal('dispatch') };
     if (userRole === 'trader' && order.status === 'dispatched')
       return { label: 'Confirm Delivery Received', color: 'bg-teal-600 hover:bg-teal-700', icon: <MapPin size={18} />, action: () => setModal('delivery') };
+    if (userRole === 'trader' && order.status === 'delivered' && order.payment_status !== 'paid')
+      return { label: 'Pay Now (via Razorpay)', color: 'bg-green-600 hover:bg-green-700', icon: <IndianRupee size={18} />, action: handleRazorpayPayment };
     return null;
   };
   const cta = getCTA();
-
-  const ModalWrap = ({ children }: { children: React.ReactNode }) => (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={e => e.target === e.currentTarget && closeModal()}>
-      <div className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        {children}
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
@@ -343,14 +528,19 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
         {/* Actions row */}
         {!['cancelled', 'disputed'].includes(order.status) && stepIdx >= 2 && (
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3">
             {order.status === 'paid' && (
-              <button onClick={() => setModal('rating')} className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
-                <Star size={15} /> Rate this order
-              </button>
+              <div className="flex gap-3">
+                <button onClick={handleDownloadReceipt} className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 border border-green-200 rounded-xl text-sm font-semibold text-green-700 hover:bg-green-100 transition-colors">
+                  <FileText size={15} /> Transaction Receipt
+                </button>
+                <button onClick={() => setModal('rating')} className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
+                  <Star size={15} /> Rate Order
+                </button>
+              </div>
             )}
             {order.status !== 'paid' && (
-              <button onClick={() => setModal('dispute')} className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors">
+              <button onClick={() => setModal('dispute')} className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors">
                 <AlertCircle size={15} /> Raise a dispute
               </button>
             )}
@@ -367,7 +557,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
       {/* Sticky CTA */}
       {cta && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-20">
+        <div className="fixed bottom-[68px] left-0 right-0 bg-white border-t border-gray-200 p-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="max-w-lg mx-auto">
             <button onClick={cta.action} disabled={actionLoading}
               className={`w-full ${cta.color} text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-colors disabled:opacity-60`}>
@@ -380,7 +570,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
       {/* ── DISPATCH MODAL ── */}
       {modal === 'dispatch' && (
-        <ModalWrap>
+        <ModalWrap onClose={closeModal}>
           <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">Mark as Dispatched</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Transport Details *</label>
@@ -418,11 +608,11 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
       {/* ── DELIVERY MODAL ── */}
       {modal === 'delivery' && (
-        <ModalWrap>
+        <ModalWrap onClose={closeModal}>
           <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">Confirm Delivery</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2">
             <IndianRupee size={14} className="text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">Confirming delivery will release <strong>{inr(order.final_amount * 0.97)}</strong> to the farmer.</p>
+            <p className="text-xs text-amber-800">Confirming delivery will open secure payment for <strong>{inr(order.final_amount)}</strong>.</p>
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Delivery Photo</label>
@@ -451,14 +641,14 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           <button onClick={handleDelivery} disabled={actionLoading}
             className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60">
             {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
-            {actionLoading ? 'Releasing payment...' : 'Confirm & Release Payment'}
+            {actionLoading ? 'Loading Gateway...' : 'Confirm & Proceed to Pay'}
           </button>
         </ModalWrap>
       )}
 
       {/* ── DISPUTE MODAL ── */}
       {modal === 'dispute' && (
-        <ModalWrap>
+        <ModalWrap onClose={closeModal}>
           <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">Raise a Dispute</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Reason *</label>
@@ -490,7 +680,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
       {/* ── RATING MODAL ── */}
       {modal === 'rating' && (
-        <ModalWrap>
+        <ModalWrap onClose={closeModal}>
           <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">Rate {userRole === 'farmer' ? 'Trader' : 'Farmer'}</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
           <div className="text-center py-2">
             <p className="text-sm text-gray-500 mb-4">How was your experience with {otherParty?.name}?</p>

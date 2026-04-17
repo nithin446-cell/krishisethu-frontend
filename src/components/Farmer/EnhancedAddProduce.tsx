@@ -86,7 +86,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
     e.preventDefault();
 
     if (!formData.name || !formData.quantity || !formData.expectedPrice || !formData.location) {
-      setError('कृपया सभी आवश्यक फ़ील्ड भरें / Please fill all required fields');
+      setError('Please fill all required fields');
       return;
     }
 
@@ -150,8 +150,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
             <ArrowLeft size={20} className="text-gray-600" />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold text-gray-800">फसल बेचें</h1>
-            <p className="text-sm text-gray-600">Add Produce to Sell</p>
+            <h1 className="text-lg font-semibold text-gray-800">Add Produce to Sell</h1>
           </div>
         </div>
       </div>
@@ -160,14 +159,14 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- CROP NAME DROPDOWN --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">फसल का नाम / Crop Name *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Crop Name *</label>
           <select
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full p-4 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             required
           >
-            <option value="">फसल चुनें / Select Crop</option>
+            <option value="">Select Crop</option>
             {crops.map((crop) => (
               <option key={crop.value} value={crop.value}>{crop.label}</option>
             ))}
@@ -177,7 +176,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
         {/* --- VARIETY & QUANTITY --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-3">किस्म / Variety</label>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Variety</label>
             <input
               type="text"
               value={formData.variety}
@@ -188,7 +187,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-3">मात्रा / Quantity *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Quantity *</label>
             <div className="flex space-x-3">
               <input
                 type="number"
@@ -211,7 +210,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- EXPECTED PRICE --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">अपेक्षित कीमत / Expected Price *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Expected Price *</label>
           <div className="relative">
             <span className="absolute left-4 top-4 text-gray-500 text-lg">₹</span>
             <input
@@ -227,7 +226,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- ACTUAL FILE UPLOAD SECTION --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">फसल की तस्वीरें / Produce Images</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Produce Images</label>
 
           <div className="space-y-4">
             <label className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-green-500 transition-colors group cursor-pointer block">
@@ -243,7 +242,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
                 <div className="w-12 h-12 bg-gray-100 group-hover:bg-green-100 rounded-full flex items-center justify-center mb-3 transition-colors">
                   <Upload size={24} className="text-gray-400 group-hover:text-green-600 transition-colors" />
                 </div>
-                <p className="text-sm text-gray-600 font-medium mb-1">तस्वीर अपलोड करें / Select Files</p>
+                <p className="text-sm text-gray-600 font-medium mb-1">Select Files</p>
                 <p className="text-xs text-gray-500">Maximum 5 images allowed</p>
               </div>
             </label>
@@ -278,7 +277,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- LOCATION --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">स्थान / Location *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Location *</label>
           <div className="flex space-x-3">
             <input
               type="text"
@@ -302,7 +301,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- DESCRIPTION --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">विवरण / Description</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">Description</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -336,7 +335,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
             ) : isFormValid() ? (
               <div className="flex items-center justify-center space-x-2">
                 <Check size={20} />
-                <span>फसल सूची में जोड़ें / List Produce</span>
+                <span>List Produce</span>
               </div>
             ) : (
               'कृपया सभी आवश्यक फ़ील्ड भरें'

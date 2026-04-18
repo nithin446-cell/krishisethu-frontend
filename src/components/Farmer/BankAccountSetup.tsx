@@ -4,6 +4,7 @@ import {
   CreditCard, Building, AlertCircle, Eye, EyeOff, ChevronRight
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface BankAccountSetupProps {
   userId: string;
@@ -36,6 +37,7 @@ const INDIAN_BANKS = [
 type Step = 'select-bank' | 'enter-details' | 'verify-penny' | 'card-security' | 'success';
 
 const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, onComplete, onBack }) => {
+  const { t } = useLanguage();
   const [step, setStep] = useState<Step>('select-bank');
   const [search, setSearch] = useState('');
   const [selectedBank, setSelectedBank] = useState<typeof INDIAN_BANKS[0] | null>(null);
@@ -93,16 +95,16 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
 
     if (!accountDetails.use_upi) {
       if (accountDetails.account_number !== accountDetails.confirm_account_number) {
-        setError('Account numbers do not match.');
+        setError(t('bank.errorMismatch'));
         return;
       }
       if (accountDetails.ifsc_code.length !== 11) {
-        setError('IFSC code must be exactly 11 characters.');
+        setError(t('bank.errorIfsc'));
         return;
       }
     } else {
       if (!accountDetails.upi_id.includes('@')) {
-        setError('Enter a valid UPI ID (e.g. name@okicici).');
+        setError(t('bank.errorUpi'));
         return;
       }
     }
@@ -122,7 +124,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
       setPennyRef(res.reference_id);
       setStep('verify-penny');
     } catch (err: any) {
-      setError(err.message || 'Failed to initiate verification.');
+      setError(err.message || t('bank.errorInitiate'));
     } finally {
       setLoading(false);
     }
@@ -139,7 +141,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
       });
       setStep('card-security');
     } catch (err: any) {
-      setError(err.message || 'Amount did not match. Please check your bank statement.');
+      setError(err.message || t('bank.errorAmount'));
     } finally {
       setLoading(false);
     }
@@ -150,7 +152,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
     setError(null);
 
     if (cardDetails.last6.length !== 6) {
-      setError('Enter the last 6 digits of your debit card.');
+      setError(t('bank.errorCard'));
       return;
     }
 
@@ -167,7 +169,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
       setLinkedAccountId(res.linked_account_id || '');
       setStep('success');
     } catch (err: any) {
-      setError(err.message || 'Card verification failed. Please try again.');
+      setError(err.message || t('bank.errorCardVerify'));
     } finally {
       setLoading(false);
     }
@@ -212,12 +214,12 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
             <ArrowLeft size={20} className="text-gray-600" />
           </button>
           <div>
-            <h1 className="text-lg font-semibold text-gray-800">Add Bank Account</h1>
+            <h1 className="text-lg font-semibold text-gray-800">{t('bank.addAccount')}</h1>
             <p className="text-xs text-gray-500">
-              {step === 'select-bank' && 'Choose your bank'}
-              {step === 'enter-details' && `${selectedBank?.name} — Enter account details`}
-              {step === 'verify-penny' && 'Verify your account'}
-              {step === 'card-security' && 'Security verification'}
+              {step === 'select-bank' && t('bank.chooseBank')}
+              {step === 'enter-details' && `${selectedBank?.name} — ${t('bank.enterDetails')}`}
+              {step === 'verify-penny' && t('bank.verifyAccount')}
+              {step === 'card-security' && t('bank.securityCheck')}
             </p>
           </div>
         </div>
@@ -242,7 +244,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
               <Search size={16} className="absolute left-3 top-3.5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search your bank..."
+                placeholder={t('bank.searchBank')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
@@ -251,7 +253,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
 
             {popularBanks.length > 0 && (
               <>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Popular Banks</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('bank.popularBanks')}</p>
                 <div className="grid grid-cols-2 gap-3">
                   {popularBanks.map(bank => (
                     <button key={bank.id} onClick={() => handleBankSelect(bank)}
@@ -272,7 +274,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
 
             {otherBanks.length > 0 && (
               <>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2">All Banks</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2">{t('bank.allBanks')}</p>
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                   {otherBanks.map((bank, i) => (
                     <button key={bank.id} onClick={() => handleBankSelect(bank)}
@@ -304,7 +306,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
               </div>
               <div>
                 <p className="font-semibold text-gray-800">{selectedBank.name}</p>
-                <p className="text-xs text-gray-500">Selected bank</p>
+                <p className="text-xs text-gray-500">{t('bank.selectedBank')}</p>
               </div>
             </div>
 
@@ -315,7 +317,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
                 className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
                   !accountDetails.use_upi ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500'
                 }`}>
-                Account Number
+                {t('bank.accountNumber')}
               </button>
               <button type="button"
                 onClick={() => setAccountDetails(prev => ({ ...prev, use_upi: true }))}
@@ -327,24 +329,24 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Account Holder Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('bank.accountHolder')} *</label>
               <input required type="text"
                 value={accountDetails.account_holder_name}
                 onChange={e => setAccountDetails(prev => ({ ...prev, account_holder_name: e.target.value }))}
-                placeholder="As per bank records"
+                placeholder={t('bank.accountHolder')}
                 className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
             </div>
 
             {!accountDetails.use_upi ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('bank.accountNumber')} *</label>
                   <div className="relative">
                     <input required
                       type={showAccNum ? 'text' : 'password'}
                       value={accountDetails.account_number}
                       onChange={e => setAccountDetails(prev => ({ ...prev, account_number: e.target.value.replace(/\D/g, '') }))}
-                      placeholder="Enter account number"
+                      placeholder={t('bank.accountNumber')}
                       className="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                     <button type="button" onClick={() => setShowAccNum(!showAccNum)}
                       className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600">
@@ -353,24 +355,23 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Account Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('bank.confirmAccountNumber')} *</label>
                   <input required type="text"
                     value={accountDetails.confirm_account_number}
                     onChange={e => setAccountDetails(prev => ({ ...prev, confirm_account_number: e.target.value.replace(/\D/g, '') }))}
-                    placeholder="Re-enter account number"
+                    placeholder={t('bank.confirmAccountNumber')}
                     className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('bank.ifscCode')} *</label>
                   <input required type="text" maxLength={11}
                     value={accountDetails.ifsc_code}
                     onChange={e => setAccountDetails(prev => ({ ...prev, ifsc_code: e.target.value.toUpperCase() }))}
                     placeholder="e.g. SBIN0001234"
                     className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono" />
-                  <p className="text-xs text-gray-400 mt-1">11-character code found on cheque book or bank statement</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Type *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('bank.accountType')} *</label>
                   <div className="flex gap-3">
                     {['savings', 'current'].map(type => (
                       <button key={type} type="button"
@@ -380,7 +381,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
                             ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                             : 'border-gray-200 text-gray-600 hover:border-gray-300'
                         }`}>
-                        {type}
+                        {t(`bank.${type}`)}
                       </button>
                     ))}
                   </div>
@@ -399,13 +400,13 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
 
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex gap-2">
               <Shield size={16} className="text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-700">We will send ₹1 to your account to verify it. This amount will be returned after verification.</p>
+              <p className="text-xs text-blue-700">{t('bank.verifyBenefit')}</p>
             </div>
 
             <button type="submit" disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 transition-colors shadow-lg">
               {loading ? <Loader2 className="animate-spin" size={20} /> : <Building size={20} />}
-              {loading ? 'Sending verification amount...' : 'Verify My Account'}
+              {loading ? t('common.processing') || 'Processing...' : t('bank.verifyMyAccount')}
             </button>
           </form>
         )}
@@ -528,12 +529,9 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
               <CheckCircle size={48} className="text-green-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Bank Account Added!</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('bank.successTitle')}</h2>
               <p className="text-gray-500 text-sm">
-                Your {selectedBank?.name} account has been verified and registered.
-                {userRole === 'farmer'
-                  ? ' Payments will be automatically credited to your account after order completion.'
-                  : ' Your account is ready for marketplace transactions.'}
+                {t('bank.successDesc')}
               </p>
             </div>
 
@@ -571,7 +569,7 @@ const BankAccountSetup: React.FC<BankAccountSetupProps> = ({ userId, userRole, o
 
             <button onClick={onComplete}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-colors shadow-lg">
-              Continue to Dashboard
+              {t('bank.continueDashboard')}
             </button>
           </div>
         )}

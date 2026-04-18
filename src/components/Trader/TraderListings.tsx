@@ -14,12 +14,15 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { useLanguage } from '../../contexts/LanguageContext';
+
 interface TraderListingsProps {
   onViewProduce: (produce: any) => void;
   traderId?: string; // Added for future bidding actions
 }
 
 const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId }) => {
+  const { t, language } = useLanguage();
   // Backend Integration State
   const [liveProduces, setLiveProduces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,9 +117,9 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
     const date = new Date(dateString);
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
-    if (diffInHours < 1) return 'अभी / Just now';
-    if (diffInHours < 24) return `${diffInHours} घंटे पहले / ${diffInHours}h ago`;
-    return `${Math.floor(diffInHours / 24)} दिन पहले / ${Math.floor(diffInHours / 24)}d ago`;
+    if (diffInHours < 1) return t('common.justNow') || 'Just now';
+    if (diffInHours < 24) return `${diffInHours}${t('common.hAgo') || 'h ago'}`;
+    return `${Math.floor(diffInHours / 24)}${t('common.dAgo') || 'd ago'}`;
   };
 
   const clearAllFilters = () => {
@@ -141,7 +144,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <Loader className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-        <p className="text-gray-600 font-medium">Loading live market data...</p>
+        <p className="text-gray-600 font-medium">{t('common.loading') || 'Loading...'}</p>
       </div>
     );
   }
@@ -152,9 +155,8 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold mb-1">उपलब्ध फसलें</h2>
-            <p className="text-blue-100 text-sm">Available Produce for Trading</p>
-            <p className="text-blue-200 text-xs mt-1">{filteredProduces.length} listings found</p>
+            <h2 className="text-xl font-bold mb-1">{t('trader.availableProduces')}</h2>
+            <p className="text-blue-200 text-xs mt-1">{filteredProduces.length} {t('trader.listingsFound') || 'listings found'}</p>
           </div>
           <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
             <Package size={24} />
@@ -167,7 +169,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
         <Search size={20} className="absolute left-3 top-3 text-gray-400" />
         <input
           type="text"
-          placeholder="फसल, किस्म या स्थान खोजें / Search crops, variety or location"
+          placeholder={t('trader.searchPlaceholder')}
           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -183,7 +185,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
             }`}
         >
           <SlidersHorizontal size={16} />
-          <span>फिल्टर / Filters</span>
+          <span>{t('trader.filters')}</span>
           {activeFiltersCount > 0 && (
             <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {activeFiltersCount}
@@ -200,7 +202,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
               className="rounded border-gray-300 text-green-600 focus:ring-green-500"
             />
             <Shield size={16} className="text-green-600" />
-            <span className="text-gray-700">केवल सत्यापित / Verified Only</span>
+            <span className="text-gray-700">{t('trader.verifiedOnly')}</span>
           </label>
         </div>
       </div>
@@ -209,7 +211,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
       {showFilters && (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">उन्नत फिल्टर / Advanced Filters</h3>
+            <h3 className="font-semibold text-gray-800">{t('trader.advancedFilters')}</h3>
             <button
               onClick={() => setShowFilters(false)}
               title="Close filters panel"
@@ -224,14 +226,14 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
             {/* Crop Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                फसल प्रकार / Crop Type
+                {t('trader.cropType')}
               </label>
               <select
                 value={selectedCrop}
                 onChange={(e) => setSelectedCrop(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">सभी फसलें / All Crops</option>
+                <option value="all">{t('trader.allCrops')}</option>
                 {cropTypes.map(crop => (
                   <option key={crop} value={crop}>{crop}</option>
                 ))}
@@ -241,14 +243,14 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
             {/* Location Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                स्थान / Location
+                {t('trader.location')}
               </label>
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">सभी स्थान / All Locations</option>
+                <option value="all">{t('trader.allLocations')}</option>
                 {locations.map(location => (
                   <option key={location} value={location}>{location}</option>
                 ))}
@@ -258,19 +260,19 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
             {/* Quantity Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                मात्रा सीमा / Quantity Range (Quintals)
+                {t('trader.quantityRange')}
               </label>
               <div className="flex space-x-2">
                 <input
                   type="number"
-                  placeholder="न्यूनतम"
+                  placeholder={t('trader.min')}
                   value={quantityRange.min}
                   onChange={(e) => setQuantityRange({ ...quantityRange, min: e.target.value })}
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <input
                   type="number"
-                  placeholder="अधिकतम"
+                  placeholder={t('trader.max')}
                   value={quantityRange.max}
                   onChange={(e) => setQuantityRange({ ...quantityRange, max: e.target.value })}
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -281,19 +283,19 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
             {/* Price Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                मूल्य सीमा / Price Range (₹ per quintal)
+                {t('trader.priceRange')}
               </label>
               <div className="flex space-x-2">
                 <input
                   type="number"
-                  placeholder="न्यूनतम"
+                  placeholder={t('trader.min')}
                   value={priceRange.min}
                   onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <input
                   type="number"
-                  placeholder="अधिकतम"
+                  placeholder={t('trader.max')}
                   value={priceRange.max}
                   onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -305,20 +307,16 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
           {/* Sort Options */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              क्रमबद्ध करें / Sort By
+              {t('trader.sortBy')}
             </label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="newest">नवीनतम / Newest First</option>
-              <option value="price_low">कम कीमत / Price: Low to High</option>
-              <option value="price_high">अधिक कीमत / Price: High to Low</option>
-              <option value="quantity_high">अधिक मात्रा / Quantity: High to Low</option>
-              <option value="quantity_low">कम मात्रा / Quantity: Low to High</option>
-              <option value="location">स्थान के अनुसार / By Location</option>
-              <option value="bids">सबसे अधिक बोलियां / Most Bids</option>
+              <option value="newest">{t('trader.newest')}</option>
+              <option value="price_low">{t('trader.priceLow')}</option>
+              <option value="price_high">{t('trader.priceHigh')}</option>
             </select>
           </div>
 
@@ -328,7 +326,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
               onClick={clearAllFilters}
               className="w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
-              सभी फिल्टर साफ़ करें / Clear All Filters
+              {t('trader.clearFilters')}
             </button>
           )}
         </div>
@@ -336,9 +334,9 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
 
       {/* Results Summary */}
       <div className="flex items-center justify-between text-sm text-gray-600">
-        <span>{filteredProduces.length} परिणाम मिले / results found</span>
+        <span>{filteredProduces.length} {t('trader.resultsFound') || 'results found'}</span>
         {activeFiltersCount > 0 && (
-          <span>{activeFiltersCount} फिल्टर सक्रिय / filters active</span>
+          <span>{activeFiltersCount} {t('trader.filtersActive') || 'filters active'}</span>
         )}
       </div>
 
@@ -372,14 +370,14 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
                         <div className="flex items-center space-x-1 bg-orange-100 px-2 py-1 rounded-full">
                           <Star size={12} className="text-orange-600" />
                           <span className="text-xs text-orange-700 font-medium">
-                            {produce.bids.length} bids
+                            {produce.bids.length} {t('trader.bids') || 'bids'}
                           </span>
                         </div>
                       )}
                     </div>
 
                     {produce.variety && (
-                      <p className="text-sm text-gray-600 mb-1">किस्म: {produce.variety}</p>
+                      <p className="text-sm text-gray-600 mb-1">{t('addProduce.variety')}: {produce.variety}</p>
                     )}
 
                     <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -390,7 +388,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
 
                   <div className="text-right">
                     <p className="text-xl font-bold text-green-600">₹{produce.currentPrice.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">per {produce.unit}</p>
+                    <p className="text-xs text-gray-500">/{produce.unit}</p>
                   </div>
                 </div>
 
@@ -434,13 +432,12 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
       {filteredProduces.length === 0 && (
         <div className="text-center py-12">
           <Package size={48} className="mx-auto text-gray-400 mb-3" />
-          <p className="text-gray-500 font-medium">कोई फसल नहीं मिली</p>
-          <p className="text-sm text-gray-400 mb-4">No produce found matching your criteria</p>
+          <p className="text-gray-500 font-medium">{t('trader.noProduce')}</p>
           <button
             onClick={clearAllFilters}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            फिल्टर साफ़ करें / Clear Filters
+            {t('trader.clearFilters')}
           </button>
         </div>
       )}
@@ -448,19 +445,19 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
       {/* Quick Stats */}
       {filteredProduces.length > 0 && (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-          <h4 className="font-semibold text-gray-800 mb-3">त्वरित आंकड़े / Quick Stats</h4>
+          <h4 className="font-semibold text-gray-800 mb-3">{t('trader.quickStats')}</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <p className="font-bold text-blue-600">
                 ₹{Math.min(...filteredProduces.map(p => p.currentPrice)).toLocaleString()}
               </p>
-              <p className="text-blue-700">न्यूनतम मूल्य / Min Price</p>
+              <p className="text-blue-700">{t('trader.minPrice')}</p>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <p className="font-bold text-green-600">
                 ₹{Math.max(...filteredProduces.map(p => p.currentPrice)).toLocaleString()}
               </p>
-              <p className="text-green-700">अधिकतम मूल्य / Max Price</p>
+              <p className="text-green-700">{t('trader.maxPrice')}</p>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, MapPin, Calendar, Package, ArrowLeft, Check, Upload, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface EnhancedAddProduceProps {
   onSubmit: (produceData: any) => void;
@@ -10,6 +11,7 @@ interface EnhancedAddProduceProps {
 }
 
 const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBack, farmerId }) => {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     variety: '',
@@ -86,7 +88,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
     e.preventDefault();
 
     if (!formData.name || !formData.quantity || !formData.expectedPrice || !formData.location) {
-      setError('Please fill all required fields');
+      setError(t('produce.fillAllFields') || 'Please fill all required fields');
       return;
     }
 
@@ -146,11 +148,11 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">
         <div className="flex items-center space-x-4">
-          <button type="button" title="Go back" onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
+          <button type="button" title={t('common.back')} onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full">
             <ArrowLeft size={20} className="text-gray-600" />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold text-gray-800">Add Produce to Sell</h1>
+            <h1 className="text-lg font-semibold text-gray-800">{t('produce.addTitle')}</h1>
           </div>
         </div>
       </div>
@@ -159,14 +161,14 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- CROP NAME DROPDOWN --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Crop Name *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">{t('produce.cropName')} *</label>
           <select
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full p-4 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             required
           >
-            <option value="">Select Crop</option>
+            <option value="">{t('produce.selectCrop')}</option>
             {crops.map((crop) => (
               <option key={crop.value} value={crop.value}>{crop.label}</option>
             ))}
@@ -176,18 +178,18 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
         {/* --- VARIETY & QUANTITY --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-3">Variety</label>
+            <label className="block text-sm font-medium text-gray-700 mb-3">{t('produce.variety')}</label>
             <input
               type="text"
               value={formData.variety}
               onChange={(e) => setFormData({ ...formData, variety: e.target.value })}
-              placeholder="e.g: Basmati"
+              placeholder={t('produce.varietyPlaceholder')}
               className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
             />
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-3">Quantity *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-3">{t('produce.quantity')} *</label>
             <div className="flex space-x-3">
               <input
                 type="number"
@@ -210,7 +212,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- EXPECTED PRICE --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Expected Price *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">{t('produce.expectedPrice')} *</label>
           <div className="relative">
             <span className="absolute left-4 top-4 text-gray-500 text-lg">₹</span>
             <input
@@ -226,7 +228,7 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- ACTUAL FILE UPLOAD SECTION --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Produce Images</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">{t('produce.images')}</label>
 
           <div className="space-y-4">
             <label className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-green-500 transition-colors group cursor-pointer block">
@@ -242,15 +244,15 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
                 <div className="w-12 h-12 bg-gray-100 group-hover:bg-green-100 rounded-full flex items-center justify-center mb-3 transition-colors">
                   <Upload size={24} className="text-gray-400 group-hover:text-green-600 transition-colors" />
                 </div>
-                <p className="text-sm text-gray-600 font-medium mb-1">Select Files</p>
-                <p className="text-xs text-gray-500">Maximum 5 images allowed</p>
+                <p className="text-sm text-gray-600 font-medium mb-1">{t('produce.selectFiles')}</p>
+                <p className="text-xs text-gray-500">{t('produce.maxImages')}</p>
               </div>
             </label>
 
             {imagePreviews.length > 0 && (
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-3">
-                  Selected Images ({imagePreviews.length}/5)
+                  {t('produce.selectedImages')} ({imagePreviews.length}/5)
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {imagePreviews.map((img, index) => (
@@ -277,13 +279,13 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
 
         {/* --- LOCATION --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Location *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">{t('produce.location')} *</label>
           <div className="flex space-x-3">
             <input
               type="text"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="गांव, तहसील, जिला"
+              placeholder={t('produce.locationPlaceholder')}
               className="flex-1 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
               required
             />
@@ -294,18 +296,18 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
               className={`px-6 py-4 rounded-lg font-medium transition-colors ${isDetectingLocation ? 'bg-gray-300 text-gray-500' : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
             >
-              {isDetectingLocation ? 'खोज रहे हैं...' : 'स्थान खोजें'}
+              {isDetectingLocation ? t('produce.detecting') : t('produce.detectLocation')}
             </button>
           </div>
         </div>
 
         {/* --- DESCRIPTION --- */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Description</label>
+          <label className="block text-sm font-medium text-gray-700 mb-3">{t('produce.description')}</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="फसल की गुणवत्ता, विशेषताएं..."
+            placeholder={t('produce.descriptionPlaceholder')}
             className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 h-24 resize-none"
           />
         </div>
@@ -330,15 +332,15 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
             {isSubmitting ? (
               <div className="flex items-center justify-center space-x-2">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Uploading to server...</span>
+                <span>{t('common.processing')}</span>
               </div>
             ) : isFormValid() ? (
               <div className="flex items-center justify-center space-x-2">
                 <Check size={20} />
-                <span>List Produce</span>
+                <span>{t('produce.listProduce')}</span>
               </div>
             ) : (
-              'कृपया सभी आवश्यक फ़ील्ड भरें'
+              t('produce.fillAllFields')
             )}
           </button>
         </div>

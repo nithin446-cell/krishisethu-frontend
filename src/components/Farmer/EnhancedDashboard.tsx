@@ -3,6 +3,7 @@ import { Package, CheckCircle, Loader2, IndianRupee as Rupee, AlertTriangle, Shi
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
 import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string, onViewOrderTracking?: (id: string) => void }) => {
   const [myListings, setMyListings] = useState<any[]>([]);
@@ -10,6 +11,7 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<string>('unverified');
+  const { t } = useLanguage();
   
   // Action State (Modals/Toast)
   const [activeChat, setActiveChat] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
@@ -44,11 +46,15 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
       setVerificationStatus(userData?.verification_status || 'unverified');
 
       if (userData?.verification_status === 'verified') {
-        const listings = await api.getFarmerListings(farmerId);
-        setMyListings(Array.isArray(listings) ? listings : (listings?.data || []));
+        const listingsRes = await api.getFarmerListings(farmerId);
+        // Handle variations: array, {data: []}, or {listings: []}
+        const listings = Array.isArray(listingsRes) ? listingsRes : (listingsRes?.data || listingsRes?.listings || []);
+        setMyListings(listings);
 
-        const orders = await api.getFarmerOrders(farmerId);
-        setFarmerOrders(Array.isArray(orders) ? orders : (orders?.data || []));
+        const ordersRes = await api.getFarmerOrders(farmerId);
+        // Handle variations: array, {data: []}, or {orders: []}
+        const orders = Array.isArray(ordersRes) ? ordersRes : (ordersRes?.data || ordersRes?.orders || []);
+        setFarmerOrders(orders);
       }
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error.message);
@@ -89,16 +95,16 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
 
   const handleAcceptBid = async (bidId: string, listingId: string) => {
     showConfirm(
-      "Accept Bid?",
-      "Accepting this bid will finalize the deal and reject all other offers for this listing. Continue?",
+      t('farmer.acceptBidTitle'),
+      t('farmer.acceptBidMessage'),
       async () => {
         setActionLoading(bidId);
         try {
           await api.acceptBid(bidId, listingId);
-          showAlert("Success!", "Transaction secured! Order created successfully.");
+          showAlert(t('common.success') || 'Success!', t('order.successLabel') || 'Transaction secured!');
           await fetchDashboardData(); 
         } catch (error: any) {
-          showAlert("Error", error.message);
+          showAlert(t('common.error') || 'Error', error.message);
         } finally {
           setActionLoading(null);
         }
@@ -107,10 +113,10 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
   };
 
   const handlePaymentConfirmation = async (orderId: string, status: 'paid' | 'not_paid') => {
-    const title = status === 'paid' ? "Confirm Payment Receipt" : "Payment Dispute";
+    const title = status === 'paid' ? t('farmer.confirmPaymentTitle') : t('farmer.disputeTitle');
     const message = status === 'paid' 
-      ? "Confirm that you have securely received the payment in your bank account?" 
-      : "Report this payment as NOT received? This will flag the order for dispute.";
+      ? t('farmer.confirmPaymentMessage')
+      : t('farmer.disputeMessage');
       
     showConfirm(title, message, async () => {
         setActionLoading(orderId);
@@ -133,15 +139,15 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
     return (
       <div className="p-6 flex flex-col items-center justify-center text-center h-[70vh] bg-gray-50">
         <ShieldAlert size={64} className={`${verificationStatus === 'pending_verification' ? 'text-yellow-500' : 'text-red-500'} mb-4`} />
-        <h2 className="text-2xl font-bold text-gray-800">Account Verification Required</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{t('farmer.verifyTitle')}</h2>
         <p className="mt-2 text-gray-600 max-w-md">
           {verificationStatus === 'pending_verification' 
-            ? "Your documents are currently being reviewed by an Admin. You will be able to access the marketplace once approved." 
-            : "You cannot access marketplace features until your identity is verified. Please navigate to the Profile Tab below to upload your KYC documents."}
+            ? t('farmer.verifyPending') 
+            : t('farmer.verifyRequired')}
         </p>
         <div className="mt-8 p-4 bg-white border rounded-xl shadow-sm text-sm text-gray-500 flex flex-col items-center">
           <FileText size={24} className="mb-2 text-indigo-500" />
-          <p className="font-semibold text-gray-700">Go to the "Profile" Tab below to upload your ID!</p>
+          <p className="font-semibold text-gray-700">{t('farmer.uploadId')}</p>
         </div>
       </div>
     );
@@ -149,13 +155,40 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
 
   return (
     <div className="p-4 space-y-6 pb-24 relative">
+      {/* 📊 Summary Stats (Fix for "Total Data Blank") */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('farmer.activeListings') || 'Active Listings'}</p>
+          <div className="flex items-end justify-between mt-1">
+            <h4 className="text-2xl font-bold text-gray-800">{myListings.length}</h4>
+            <div className="p-2 bg-green-50 rounded-lg">
+              <Package size={20} className="text-green-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('farmer.totalEarnings') || 'Total Earnings'}</p>
+          <div className="flex items-end justify-between mt-1">
+            <h4 className="text-xl font-bold text-green-700">₹{
+              farmerOrders
+                .filter(o => o.payment_status === 'paid')
+                .reduce((acc, curr) => acc + (Number(curr.final_amount) || 0), 0)
+                .toLocaleString()
+            }</h4>
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Rupee size={20} className="text-blue-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">आपकी फसलें और बोलियां / Active Listings & Bids</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">{t('farmer.activeListings')}</h3>
         <div className="space-y-4">
           {myListings.length === 0 ? (
             <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed">
               <Package className="mx-auto text-gray-400 mb-2" size={40} />
-              <p className="text-gray-500">No active listings found.</p>
+              <p className="text-gray-500">{t('farmer.noListings')}</p>
             </div>
           ) : (
             myListings.map((listing) => (
@@ -163,16 +196,16 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h4 className="font-bold text-lg text-gray-800">{listing.variety || listing.crop_name || 'Unknown Crop'}</h4>
-                    <p className="text-sm text-gray-600">Base Price: ₹{listing.current_price}</p>
+                    <p className="text-sm text-gray-600">{t('farmer.basePrice')}: ₹{listing.current_price}</p>
                   </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-700">सक्रिय / Active</span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-700">{t('farmer.active')}</span>
                 </div>
 
                 <div className="mt-4 border-t pt-3">
-                  <h5 className="text-sm font-semibold text-gray-700 mb-2">प्राप्त बोलियां / Received Bids ({listing.bids?.length || 0})</h5>
+                  <h5 className="text-sm font-semibold text-gray-700 mb-2">{t('farmer.receivedBids')} ({listing.bids?.length || 0})</h5>
                   <div className="space-y-2">
                     {listing.bids?.length === 0 ? (
-                      <p className="text-xs text-gray-400 italic">No bids received yet.</p>
+                      <p className="text-xs text-gray-400 italic">{t('farmer.noBids')}</p>
                     ) : (
                       <div className="grid gap-2">
                         {listing.bids?.map((bid: any) => (
@@ -184,7 +217,7 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
                             <div>
                               {bid.status === 'pending' ? (
                                 <button disabled={actionLoading === bid.id} onClick={() => handleAcceptBid(bid.id, listing.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700">
-                                  {actionLoading === bid.id ? 'Accepting...' : 'Accept'}
+                                  {actionLoading === bid.id ? t('farmer.accepting') : t('farmer.accept')}
                                 </button>
                               ) : (
                                 <span className={`px-2 py-1 text-xs font-bold rounded ${bid.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -205,12 +238,12 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
       </div>
 
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">ऑर्डर और भुगतान / Orders & Payments</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">{t('farmer.ordersPayments')}</h3>
         <div className="space-y-4">
           {farmerOrders.length === 0 ? (
             <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed">
               <Rupee className="mx-auto text-gray-400 mb-2" size={32} />
-              <p className="text-gray-500 text-sm">अभी तक कोई पक्का ऑर्डर नहीं / No confirmed orders yet.</p>
+              <p className="text-gray-500 text-sm">{t('farmer.noConfirmedOrders')}</p>
             </div>
           ) : (
             farmerOrders.map((order) => (
@@ -226,9 +259,9 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
                 </div>
 
                 <div className="text-sm text-gray-600 mb-4">
-                  <p><strong>Trader:</strong> {order.trader?.full_name || order.trader?.business_name}</p>
-                  <p><strong>Phone:</strong> {order.trader?.phone || 'N/A'}</p>
-                  <p className="text-xs text-gray-400 mt-1">Order Date: {new Date(order.created_at).toLocaleDateString()}</p>
+                  <p><strong>{t('farmer.trader')}:</strong> {order.trader?.full_name || order.trader?.business_name}</p>
+                  <p><strong>{t('farmer.phone')}:</strong> {order.trader?.phone || 'N/A'}</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('farmer.orderDate')}: {new Date(order.created_at).toLocaleDateString()}</p>
                   
                   <button 
                     onClick={(e) => {
@@ -241,21 +274,21 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
                     }} 
                     className="mt-3 flex items-center py-1.5 px-3 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-200"
                   >
-                    <MessageSquare size={14} className="mr-1" /> Message Trader
+                    <MessageSquare size={14} className="mr-1" /> {t('farmer.messageTrader')}
                   </button>
                 </div>
 
                 {order.payment_status === 'processing' && (
                   <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mt-2">
                     <p className="text-sm text-blue-800 font-semibold mb-2 text-center">
-                      The Trader has completed the Razorpay checkout! Please confirm receipt.
+                      {t('farmer.paymentReceivedDesc')}
                     </p>
                     <div className="flex space-x-2">
                       <button onClick={(e) => { e.stopPropagation(); handlePaymentConfirmation(order.id, 'paid'); }} disabled={actionLoading === order.id} className="flex-1 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 flex justify-center items-center text-sm">
-                        <CheckCircle size={16} className="mr-1" /> Yes, Received
+                        <CheckCircle size={16} className="mr-1" /> {t('farmer.yesReceived')}
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); handlePaymentConfirmation(order.id, 'not_paid'); }} disabled={actionLoading === order.id} className="flex-1 py-2 bg-red-100 text-red-700 rounded font-medium hover:bg-red-200 flex justify-center items-center text-sm">
-                        <AlertTriangle size={16} className="mr-1" /> Not Received
+                        <AlertTriangle size={16} className="mr-1" /> {t('farmer.notReceived')}
                       </button>
                     </div>
                   </div>
@@ -294,7 +327,7 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
                   onClick={modal.onConfirm}
                   className="flex-1 py-2.5 px-4 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors shadow-lg shadow-green-200"
                 >
-                  {modal.type === 'confirm' ? 'Confirm' : 'OK'}
+                  {modal.type === 'confirm' ? t('common.confirm') || 'Confirm' : t('common.ok') || 'OK'}
                 </button>
               </div>
             </div>

@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Clock, TrendingUp, CheckCircle, XCircle, Package } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import LoadingSpinner from '../Shared/LoadingSpinner';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface MyBidsTrackerProps {
     traderId: string;
 }
 
 const MyBidsTracker: React.FC<MyBidsTrackerProps> = ({ traderId }) => {
+    const { t } = useLanguage();
     const [bids, setBids] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -37,17 +39,17 @@ const MyBidsTracker: React.FC<MyBidsTrackerProps> = ({ traderId }) => {
 
     const statusConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
         pending: {
-            label: 'Pending',
+            label: t('transaction.pending'),
             icon: <Clock size={14} />,
             color: 'bg-yellow-100 text-yellow-700',
         },
         accepted: {
-            label: 'Accepted ✓',
+            label: `${t('common.accepted')} ✓`,
             icon: <CheckCircle size={14} />,
             color: 'bg-green-100 text-green-700',
         },
         rejected: {
-            label: 'Rejected',
+            label: t('common.rejected'),
             icon: <XCircle size={14} />,
             color: 'bg-red-100 text-red-700',
         },
@@ -56,9 +58,9 @@ const MyBidsTracker: React.FC<MyBidsTrackerProps> = ({ traderId }) => {
     const formatTimeAgo = (iso: string) => {
         const diffMs = Date.now() - new Date(iso).getTime();
         const hours = Math.floor(diffMs / 3_600_000);
-        if (hours < 1) return 'Just now';
-        if (hours < 24) return `${hours}h ago`;
-        return `${Math.floor(hours / 24)}d ago`;
+        if (hours < 1) return t('trader.justNow');
+        if (hours < 24) return `${hours}${t('trader.hoursAgo')}`;
+        return `${Math.floor(hours / 24)}${t('trader.daysAgo')}`;
     };
 
     if (loading) return <LoadingSpinner message="Loading your bids..." />;
@@ -67,16 +69,16 @@ const MyBidsTracker: React.FC<MyBidsTrackerProps> = ({ traderId }) => {
         <div className="p-4 space-y-4 pb-24">
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 text-white">
-                <h2 className="text-xl font-bold">मेरी बोलियां</h2>
-                <p className="text-blue-100 text-sm">My Active &amp; Past Bids</p>
-                <p className="text-blue-200 text-xs mt-1">{bids.length} total bids placed</p>
+                <h2 className="text-xl font-bold">{t('trader.myBids')}</h2>
+                <p className="text-blue-100 text-sm">{t('trader.myBidsDesc')}</p>
+                <p className="text-blue-200 text-xs mt-1">{bids.length} {t('trader.totalBids')}</p>
             </div>
 
             {bids.length === 0 ? (
                 <div className="text-center py-14 bg-gray-50 rounded-xl border border-dashed">
                     <TrendingUp size={48} className="mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-500 font-medium">No bids placed yet</p>
-                    <p className="text-sm text-gray-400">Visit the marketplace to place your first bid</p>
+                    <p className="text-gray-500 font-medium">{t('trader.noBids')}</p>
+                    <p className="text-sm text-gray-400">{t('trader.visitMarketplace')}</p>
                 </div>
             ) : (
                 bids.map(bid => {
@@ -102,15 +104,15 @@ const MyBidsTracker: React.FC<MyBidsTrackerProps> = ({ traderId }) => {
 
                             <div className="grid grid-cols-3 gap-2 text-sm bg-gray-50 rounded-lg p-3">
                                 <div className="text-center">
-                                    <p className="text-gray-400 text-xs">Your Bid</p>
+                                    <p className="text-gray-400 text-xs">{t('trader. yourBid') || t('trader.yourBid')}</p>
                                     <p className="font-bold text-green-700">₹{bid.amount}</p>
                                 </div>
                                 <div className="text-center border-x border-gray-200">
-                                    <p className="text-gray-400 text-xs">Quantity</p>
+                                    <p className="text-gray-400 text-xs">{t('transaction.quantity')}</p>
                                     <p className="font-semibold text-gray-800">{bid.quantity} {bid.crop_listings?.unit}</p>
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-gray-400 text-xs">Placed</p>
+                                    <p className="text-gray-400 text-xs">{t('transaction.status')}</p>
                                     <p className="font-semibold text-gray-800">{formatTimeAgo(bid.created_at)}</p>
                                 </div>
                             </div>

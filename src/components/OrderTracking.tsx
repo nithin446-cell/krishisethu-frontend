@@ -6,6 +6,7 @@ import {
   RefreshCw, Star, X, Navigation, FileText, Download
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -58,16 +59,16 @@ interface OrderTrackingProps {
   onOpenChat?: (orderId: string, otherUserId: string, otherUserName: string) => void;
 }
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string; icon: React.ReactNode; color: string; bg: string; border: string; desc: string }> = {
-  placed:     { label: 'Order Placed',     icon: <Package size={18} />,     color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-200',   desc: 'Waiting for farmer to confirm' },
-  confirmed:  { label: 'Confirmed',        icon: <CheckCircle size={18} />, color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200',  desc: 'Farmer accepted the order' },
-  pending_payment: { label: 'Payment Pending', icon: <Clock size={18} />,     color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200', desc: 'Awaiting payment from trader' },
-  dispatched: { label: 'Dispatched',       icon: <Truck size={18} />,       color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200',  desc: 'Produce is on the way' },
-  delivered:  { label: 'Delivered',        icon: <MapPin size={18} />,      color: 'text-teal-700',   bg: 'bg-teal-50',   border: 'border-teal-200',    desc: 'Trader confirmed receipt' },
-  paid:       { label: 'Payment Released', icon: <IndianRupee size={18} />, color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200',   desc: 'Payment sent to farmer' },
-  cancelled:  { label: 'Cancelled',        icon: <X size={18} />,           color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200',     desc: 'Order was cancelled' },
-  disputed:   { label: 'Disputed',         icon: <AlertCircle size={18} />, color: 'text-rose-700',   bg: 'bg-rose-50',   border: 'border-rose-200',    desc: 'Under dispute resolution' },
-};
+const getStatusConfig = (t: any): Record<OrderStatus, { label: string; icon: React.ReactNode; color: string; bg: string; border: string; desc: string }> => ({
+  placed:     { label: t('order.placed'),     icon: <Package size={18} />,     color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-200',   desc: t('order.status.placedDesc') },
+  confirmed:  { label: t('order.confirmed'),        icon: <CheckCircle size={18} />, color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200',  desc: t('order.status.confirmedDesc') },
+  pending_payment: { label: t('order.pendingPayment'), icon: <Clock size={18} />,     color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200', desc: t('order.status.pendingPaymentDesc') },
+  dispatched: { label: t('order.dispatched'),       icon: <Truck size={18} />,       color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200',  desc: t('order.status.dispatchedDesc') },
+  delivered:  { label: t('order.delivered'),        icon: <MapPin size={18} />,      color: 'text-teal-700',   bg: 'bg-teal-50',   border: 'border-teal-200',    desc: t('order.status.deliveredDesc') },
+  paid:       { label: t('order.paid'), icon: <IndianRupee size={18} />, color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200',   desc: t('order.status.paidDesc') },
+  cancelled:  { label: t('common.cancelled'),        icon: <X size={18} />,           color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200',     desc: t('order.cancelled') },
+  disputed:   { label: t('order.disputed'),         icon: <AlertCircle size={18} />, color: 'text-rose-700',   bg: 'bg-rose-50',   border: 'border-rose-200',    desc: t('order.status.disputedDesc') },
+});
 
 const STATUS_ORDER: OrderStatus[] = ['placed', 'pending_payment', 'confirmed', 'dispatched', 'delivered', 'paid'];
 
@@ -78,14 +79,16 @@ const fmt = (iso?: string) => iso
 const inr = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
 const ModalWrap: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({ children, onClose }) => (
-  <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={e => e.target === e.currentTarget && onClose()}>
-    <div className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-300 overflow-y-auto max-h-[85vh]">
       {children}
     </div>
   </div>
 );
 
 const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, userRole, onBack, onOpenChat }) => {
+  const { t } = useLanguage();
+  const STATUS_CONFIG = getStatusConfig(t);
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -112,7 +115,8 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
   useEffect(() => {
     if (!orderId) { setLoading(false); return; }
     fetchOrder();
-    const poll = setInterval(fetchOrder, 30000);
+    // 3s interval for real-time status updates as requested
+    const poll = setInterval(fetchOrder, 3000);
     return () => clearInterval(poll);
   }, [orderId]);
 
@@ -248,13 +252,22 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
             .total-val { font-size: 24px; font-weight: 800; color: #15803d; }
             .footer { margin-top: 80px; text-align: center; color: #9ca3af; font-size: 11px; border-top: 1px solid #f3f4f6; padding-top: 30px; }
             .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; color: rgba(22, 163, 74, 0.05); font-weight: bold; pointer-events: none; white-space: nowrap; }
+            .action-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; }
+            .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; }
+            .btn-primary { background: #16a34a; color: white; }
+            .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
             @media print {
               body { padding: 0; }
+              .action-bar { display: none; }
               button { display: none; }
             }
           </style>
         </head>
         <body>
+          <div class="action-bar">
+            <button class="btn btn-secondary" onclick="window.close()">Close</button>
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Download PDF</button>
+          </div>
           <div class="watermark">KRISHI SETHU</div>
           <div class="header">
             <div class="logo">KrishiSethu</div>
@@ -315,14 +328,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           </div>
 
           <script>
-            window.onload = () => {
-              setTimeout(() => {
-                window.print();
-              }, 500);
-              window.onafterprint = () => {
-                window.close();
-              };
-            };
+            // Removed auto-print to allow manual download/print selection
           </script>
         </body>
       </html>
@@ -340,8 +346,8 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
   if (!order) return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3 p-4">
       <AlertCircle size={40} className="text-red-400" />
-      <p className="text-gray-600 font-medium">Order not found</p>
-      <button onClick={onBack} className="text-sm text-green-600 underline">Go back</button>
+      <p className="text-gray-600 font-medium">{t('order.notFound') || 'Order not found'}</p>
+      <button onClick={onBack} className="text-sm text-green-600 underline">{t('common.goBack') || 'Go back'}</button>
     </div>
   );
 
@@ -353,13 +359,13 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
   const getCTA = () => {
     if (userRole === 'farmer' && order.status === 'placed')
-      return { label: 'Confirm Order', color: 'bg-indigo-600 hover:bg-indigo-700', icon: <CheckCircle size={18} />, action: handleConfirmOrder };
+      return { label: t('order.confirmOrder'), color: 'bg-indigo-600 hover:bg-indigo-700', icon: <CheckCircle size={18} />, action: handleConfirmOrder };
     if (userRole === 'farmer' && order.status === 'confirmed')
-      return { label: 'Mark as Dispatched', color: 'bg-orange-500 hover:bg-orange-600', icon: <Truck size={18} />, action: () => setModal('dispatch') };
+      return { label: t('order.markDispatched'), color: 'bg-orange-500 hover:bg-orange-600', icon: <Truck size={18} />, action: () => setModal('dispatch') };
     if (userRole === 'trader' && order.status === 'dispatched')
-      return { label: 'Confirm Delivery Received', color: 'bg-teal-600 hover:bg-teal-700', icon: <MapPin size={18} />, action: () => setModal('delivery') };
+      return { label: t('order.confirmDelivery'), color: 'bg-teal-600 hover:bg-teal-700', icon: <MapPin size={18} />, action: () => setModal('delivery') };
     if (userRole === 'trader' && order.status === 'delivered' && order.payment_status !== 'paid')
-      return { label: 'Pay Now (via Razorpay)', color: 'bg-green-600 hover:bg-green-700', icon: <IndianRupee size={18} />, action: handleRazorpayPayment };
+      return { label: t('order.payNow'), color: 'bg-green-600 hover:bg-green-700', icon: <IndianRupee size={18} />, action: handleRazorpayPayment };
     return null;
   };
   const cta = getCTA();
@@ -372,7 +378,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
         <button onClick={onBack} className="p-2 rounded-full hover:bg-gray-100"><ArrowLeft size={20} className="text-gray-600" /></button>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold text-gray-900 truncate">{order.crop_name}</h1>
-          <p className="text-xs text-gray-500">Order #{order.id.slice(0, 8).toUpperCase()}</p>
+          <p className="text-xs text-gray-500">{t('transaction.orderId')} #{order.id.slice(0, 8).toUpperCase()}</p>
         </div>
         <button onClick={fetchOrder} className="p-2 rounded-full hover:bg-gray-100"><RefreshCw size={16} className="text-gray-500" /></button>
       </div>
@@ -384,22 +390,23 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
         {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex gap-2 items-start"><AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" /><p className="text-sm text-red-700 flex-1">{error}</p><button onClick={() => setError(null)}>✕</button></div>}
 
         {/* Status hero */}
-        <div className={`${cfg.bg} ${cfg.border} border rounded-2xl p-5`}>
-          <div className="flex items-center gap-3 mb-5">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 ${cfg.bg} ${cfg.border}`}>
-              <span className={cfg.color}>{cfg.icon}</span>
+        <div className={`${cfg.bg} ${cfg.border} border-2 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col items-center text-center floating-card`}>
+          <div className="flex flex-col items-center gap-3 mb-6">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border-2 ${cfg.bg} ${cfg.border} shadow-inner`}>
+              <span className={`${cfg.color} scale-125`}>{cfg.icon}</span>
             </div>
             <div>
-              <p className={`text-lg font-bold ${cfg.color}`}>{cfg.label}</p>
-              <p className="text-sm text-gray-500">{cfg.desc}</p>
+              <p className={`text-xl font-black ${cfg.color} tracking-tight`}>{cfg.label}</p>
+              <p className="text-sm font-medium text-gray-500">{cfg.desc}</p>
             </div>
           </div>
 
           {/* Step timeline */}
           <div className="flex items-start">
             {STATUS_ORDER.map((s, i) => {
-              const done = i < stepIdx && !['cancelled','disputed'].includes(order.status);
-              const active = i === stepIdx && !['cancelled','disputed'].includes(order.status);
+              const isFullyComplete = order.status === 'paid';
+              const done = (i < stepIdx || (isFullyComplete && i === stepIdx)) && !['cancelled','disputed'].includes(order.status);
+              const active = i === stepIdx && !['cancelled','disputed'].includes(order.status) && !isFullyComplete;
               const sCfg = STATUS_CONFIG[s];
               return (
                 <React.Fragment key={s}>
@@ -434,12 +441,12 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           </div>
           <div className="grid grid-cols-2 divide-x divide-gray-50">
             <div className="p-3">
-              <p className="text-xs text-gray-400 mb-0.5">Farmer</p>
+              <p className="text-xs text-gray-400 mb-0.5">{t('transaction.farmer')}</p>
               <p className="text-sm font-semibold text-gray-800">{order.farmer_name}</p>
               <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={10} />{order.farmer_village}</p>
             </div>
             <div className="p-3">
-              <p className="text-xs text-gray-400 mb-0.5">Trader</p>
+              <p className="text-xs text-gray-400 mb-0.5">{t('transaction.trader') || 'Trader'}</p>
               <p className="text-sm font-semibold text-gray-800">{order.trader_name}</p>
               <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={10} />{order.trader_city}</p>
             </div>
@@ -454,20 +461,34 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
         {/* Dispatch info */}
         {order.dispatch_note && (
-          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 space-y-1">
-            <div className="flex items-center gap-2 mb-1"><Truck size={15} className="text-orange-600" /><p className="text-sm font-bold text-orange-800">Dispatch Details</p></div>
-            <p className="text-sm text-orange-700">{order.dispatch_note}</p>
-            {order.vehicle_number && <p className="text-xs text-orange-600 font-mono">Vehicle: {order.vehicle_number}</p>}
-            {order.dispatched_at && <p className="text-xs text-orange-400">Dispatched {fmt(order.dispatched_at)}</p>}
+          <div className="bg-orange-50 border-2 border-orange-100 rounded-3xl p-6 space-y-3 shadow-lg hover:shadow-xl transition-shadow flex flex-col items-center text-center">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-1">
+              <Truck size={24} className="text-orange-600" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-orange-800 mb-1">{t('order.dispatchDetails')}</p>
+              <p className="text-sm text-orange-700 leading-relaxed max-w-[280px]">{order.dispatch_note}</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {order.vehicle_number && <span className="px-3 py-1 bg-white border border-orange-200 rounded-full text-xs text-orange-600 font-bold font-mono shadow-sm">{t('order.vehicleNo')}: {order.vehicle_number}</span>}
+              {order.dispatched_at && <span className="px-3 py-1 bg-white border border-orange-200 rounded-full text-xs text-orange-400 font-medium shadow-sm">{t('order.dispatched')}: {fmt(order.dispatched_at)}</span>}
+            </div>
           </div>
         )}
 
         {/* Delivery photo */}
         {order.delivery_photo_url && (
-          <div className="bg-teal-50 border border-teal-100 rounded-2xl overflow-hidden">
-            <div className="flex items-center gap-2 p-3 pb-2"><Camera size={15} className="text-teal-600" /><p className="text-sm font-bold text-teal-800">Delivery Proof</p></div>
-            <img src={order.delivery_photo_url} alt="Delivery proof" className="w-full h-44 object-cover" />
-            {order.delivered_at && <p className="text-xs text-teal-600 p-3">Confirmed {fmt(order.delivered_at)}</p>}
+          <div className="bg-teal-50 border-2 border-teal-100 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col items-center text-center">
+            <div className="flex items-center gap-2 p-4 pb-2">
+              <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                <Camera size={20} className="text-teal-600" />
+              </div>
+              <p className="text-base font-bold text-teal-800">{t('order.deliveryProof')}</p>
+            </div>
+            <div className="w-full px-4 pb-4">
+              <img src={order.delivery_photo_url} alt="Delivery proof" className="w-full h-48 object-cover rounded-2xl shadow-inner border border-teal-100" />
+              {order.delivered_at && <p className="text-xs font-medium text-teal-600 mt-3 bg-white/50 py-1 rounded-full">Pahunch gaya: {fmt(order.delivered_at)}</p>}
+            </div>
           </div>
         )}
 
@@ -501,7 +522,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
         {order.status_history?.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <button onClick={() => setShowHistory(!showHistory)} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center gap-2"><Clock size={16} className="text-gray-500" /><span className="text-sm font-semibold text-gray-800">Order History</span><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{order.status_history.length}</span></div>
+              <div className="flex items-center gap-2"><Clock size={16} className="text-gray-500" /><span className="text-sm font-semibold text-gray-800">{t('order.history')}</span><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{order.status_history.length}</span></div>
               {showHistory ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
             </button>
             {showHistory && (
@@ -532,16 +553,16 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
             {order.status === 'paid' && (
               <div className="flex gap-3">
                 <button onClick={handleDownloadReceipt} className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-50 border border-green-200 rounded-xl text-sm font-semibold text-green-700 hover:bg-green-100 transition-colors">
-                  <FileText size={15} /> Transaction Receipt
+                  <FileText size={15} /> {t('transaction.receipt')}
                 </button>
                 <button onClick={() => setModal('rating')} className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
-                  <Star size={15} /> Rate Order
+                  <Star size={15} /> {t('order.rateOrder')}
                 </button>
               </div>
             )}
             {order.status !== 'paid' && (
               <button onClick={() => setModal('dispute')} className="w-full flex items-center justify-center gap-2 py-3 bg-red-50 border border-red-200 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors">
-                <AlertCircle size={15} /> Raise a dispute
+                <AlertCircle size={15} /> {t('order.raiseDispute')}
               </button>
             )}
           </div>
@@ -549,8 +570,8 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
 
         {order.status === 'disputed' && (
           <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-1"><AlertCircle size={16} className="text-rose-600" /><p className="text-sm font-bold text-rose-800">Dispute Under Review</p></div>
-            <p className="text-xs text-rose-600">Our team is investigating. You will receive a resolution within 24 hours via SMS.</p>
+            <div className="flex items-center gap-2 mb-1"><AlertCircle size={16} className="text-rose-600" /><p className="text-sm font-bold text-rose-800">{t('order.disputeUnderReview')}</p></div>
+            <p className="text-xs text-rose-600">{t('order.disputeResolutionNote')}</p>
           </div>
         )}
       </div>
@@ -562,7 +583,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
             <button onClick={cta.action} disabled={actionLoading}
               className={`w-full ${cta.color} text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-colors disabled:opacity-60`}>
               {actionLoading ? <Loader2 className="animate-spin" size={20} /> : cta.icon}
-              {actionLoading ? 'Processing...' : cta.label}
+              {actionLoading ? t('common.processing') || 'Processing...' : cta.label}
             </button>
           </div>
         </div>
@@ -571,16 +592,16 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
       {/* ── DISPATCH MODAL ── */}
       {modal === 'dispatch' && (
         <ModalWrap onClose={closeModal}>
-          <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">Mark as Dispatched</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
+          <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">{t('order.markDispatched')}</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Transport Details *</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{t('order.transportDetails')} *</label>
             <textarea rows={3} value={dispatchNote} onChange={e => setDispatchNote(e.target.value)}
               placeholder="e.g. Loaded on KSRTC truck, driver Ramesh (9876543210), arrives Yeshwanthpur market tomorrow"
               className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none resize-none bg-gray-50 focus:bg-white" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Vehicle No.</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{t('order.vehicleNo')}</label>
               <input type="text" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value.toUpperCase())}
                 placeholder="KA 01 AB 1234"
                 className="w-full p-3 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-orange-400 outline-none bg-gray-50 focus:bg-white" />
@@ -601,7 +622,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           <button onClick={handleDispatch} disabled={actionLoading || !dispatchNote.trim()}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60">
             {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Navigation size={18} />}
-            {actionLoading ? 'Saving...' : 'Confirm Dispatch'}
+            {actionLoading ? t('common.saving') || 'Saving...' : t('order.confirmDispatch')}
           </button>
         </ModalWrap>
       )}
@@ -609,7 +630,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
       {/* ── DELIVERY MODAL ── */}
       {modal === 'delivery' && (
         <ModalWrap onClose={closeModal}>
-          <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">Confirm Delivery</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
+          <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">{t('order.confirmDelivery')}</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2">
             <IndianRupee size={14} className="text-amber-600 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800">Confirming delivery will open secure payment for <strong>{inr(order.final_amount)}</strong>.</p>
@@ -641,7 +662,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           <button onClick={handleDelivery} disabled={actionLoading}
             className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60">
             {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
-            {actionLoading ? 'Loading Gateway...' : 'Confirm & Proceed to Pay'}
+            {actionLoading ? t('common.loading') || 'Loading...' : t('order.confirmAndPay')}
           </button>
         </ModalWrap>
       )}
@@ -649,7 +670,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
       {/* ── DISPUTE MODAL ── */}
       {modal === 'dispute' && (
         <ModalWrap onClose={closeModal}>
-          <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">Raise a Dispute</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
+          <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-gray-900">{t('order.raiseDispute')}</h3><button onClick={closeModal} className="p-2 rounded-full hover:bg-gray-100"><X size={18} className="text-gray-500" /></button></div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Reason *</label>
             <div className="grid grid-cols-2 gap-2">
@@ -673,7 +694,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           <button onClick={handleDispute} disabled={actionLoading || !disputeReason || !disputeDetails.trim()}
             className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60">
             {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <AlertCircle size={18} />}
-            {actionLoading ? 'Submitting...' : 'Submit Dispute'}
+            {actionLoading ? t('common.submitting') || 'Submitting...' : t('order.submitDispute')}
           </button>
         </ModalWrap>
       )}
@@ -701,7 +722,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           <button onClick={handleRating} disabled={actionLoading || !rating}
             className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60">
             {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Star size={18} />}
-            {actionLoading ? 'Submitting...' : 'Submit Rating'}
+            {actionLoading ? t('common.submitting') || 'Submitting...' : t('transaction.submitRating')}
           </button>
         </ModalWrap>
       )}

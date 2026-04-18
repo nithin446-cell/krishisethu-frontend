@@ -4,6 +4,7 @@ import { Produce } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
 import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -25,11 +26,13 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [liveTransactions, setLiveTransactions] = useState<any[]>([]);
   const [liveProduce, setLiveProduce] = useState<any[]>([]); 
+  const [liveBids, setLiveBids] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<string>('unverified');
   const [activeChat, setActiveChat] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
+  const { t } = useLanguage();
 
   const fetchDashboardData = async () => {
     try {
@@ -37,10 +40,14 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
       setVerificationStatus(userData?.verification_status || 'unverified');
 
       if (userData?.verification_status === 'verified') {
-        const txData = await api.getTraderOrders(traderId);
+        const [txData, bidsData, marketData] = await Promise.all([
+          api.getTraderOrders(traderId),
+          api.getTraderBids(traderId),
+          api.getMarket()
+        ]);
+        
         setLiveTransactions(txData || []);
-
-        const marketData = await api.getMarket();
+        setLiveBids(bidsData || []);
         setLiveProduce(marketData || []);
       }
     } catch (err) {
@@ -64,12 +71,12 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
   }, [traderId]);
 
   const handlePayment = async (order: any) => {
-    if (!window.confirm(`Proceed to pay ₹${order.final_amount} for this order via Razorpay?`)) return;
+    if (!window.confirm(t('trader.payConfirm').replace('{amount}', order.final_amount))) return;
     
     setProcessingPayment(order.id);
     try {
       const res = await loadRazorpayScript();
-      if (!res) return alert('Razorpay SDK failed to load. Are you online?');
+      if (!res) return alert(t('trader.razorpayFail') || 'Razorpay SDK failed to load.');
 
       const paymentIntent = await api.processPayment({
         order_id: order.id,
@@ -84,7 +91,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
         amount: paymentIntent.amount, 
         currency: "INR",
         name: "Krishisethu Marketplace",
-        description: `Payment for Order #${order.id.slice(0, 8)}`,
+        description: `${t('trader.paymentTitle')} #${order.id.slice(0, 8)}`,
         order_id: paymentIntent.razorpay_order_id,
         handler: async function (response: any) {
           try {
@@ -120,15 +127,15 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
     return (
       <div className="p-6 flex flex-col items-center justify-center text-center h-[70vh] bg-gray-50">
         <ShieldAlert size={64} className={`${verificationStatus === 'pending_verification' ? 'text-yellow-500' : 'text-red-500'} mb-4`} />
-        <h2 className="text-2xl font-bold text-gray-800">Account Verification Required</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{t('trader.verifyTitle')}</h2>
         <p className="mt-2 text-gray-600 max-w-md">
           {verificationStatus === 'pending_verification' 
-            ? "Your documents are currently being reviewed by an Admin. Market access will open soon." 
-            : "You cannot access marketplace features until your identity is verified. Please navigate to the Profile Tab below to upload your KYC documents."}
+            ? t('trader.verifyPending') 
+            : t('trader.verifyRequired')}
         </p>
         <div className="mt-8 p-4 bg-white border rounded-xl shadow-sm text-sm text-gray-500 flex flex-col items-center">
           <FileText size={24} className="mb-2 text-indigo-500" />
-          <p className="font-semibold text-gray-700">Go to the "Profile" Tab below to upload your ID!</p>
+          <p className="font-semibold text-gray-700">{t('trader.uploadId')}</p>
         </div>
       </div>
     );
@@ -155,10 +162,10 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
   };
 
   const getStatusText = (status: string, payment_status: string) => {
-    if (payment_status === 'paid') return 'भुगतान सफल / Payment Confirmed';
-    if (payment_status === 'processing') return 'किसान की पुष्टि की प्रतीक्षा / Awaiting Farmer Confirmation';
-    if (payment_status === 'not_paid') return 'विवादित / Payment Disputed';
-    if (status === 'pending_payment' || payment_status === 'yet_to_paid') return 'भुगतान लंबित / Pending Payment';
+    if (payment_status === 'paid') return t('trader.paymentConfirmed');
+    if (payment_status === 'processing') return t('trader.awaitingConfirmation');
+    if (payment_status === 'not_paid') return t('trader.paymentDisputed');
+    if (status === 'pending_payment' || payment_status === 'yet_to_paid') return t('trader.pendingPayment');
     return status;
   };
 
@@ -167,8 +174,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold mb-1">नमस्ते व्यापारी!</h2>
-            <p className="text-blue-100 text-sm">Welcome Trader!</p>
+            <h2 className="text-xl font-bold mb-1">{t('trader.welcome')}</h2>
           </div>
           <div className="relative">
             <Bell size={24} />
@@ -181,44 +187,49 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md border border-gray-100">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">खरीदारी ट्रैकिंग / Purchase Tracking</h3>
-        </div>
-        
-        <div className="p-4 space-y-4">
-          {filteredTransactions.length === 0 ? (
-            <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed">
-              <Package className="mx-auto text-gray-400 mb-2" size={32} />
-              <p className="text-gray-500 text-sm">अभी तक कोई लेनदेन नहीं / No transactions available.</p>
+      {/* 📦 Purchase Tracking Section */}
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">{t('trader.activeOrders')}</h3>
+        <div className="space-y-4">
+          {liveTransactions.length === 0 ? (
+            <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed">
+              <Package className="mx-auto text-gray-400 mb-2" size={40} />
+              <p className="text-gray-500">{t('trader.noOrders')}</p>
             </div>
           ) : (
             filteredTransactions.map((transaction) => (
-              <div key={transaction.id} onClick={() => onViewOrderTracking && onViewOrderTracking(transaction.id)} className="border rounded-lg p-4 bg-gray-50 shadow-sm cursor-pointer hover:border-blue-300 transition-colors">
-                <div className="flex items-center justify-between mb-3 border-b pb-3">
+              <div key={transaction.id} onClick={() => onViewOrderTracking && onViewOrderTracking(transaction.id)} className="border-2 border-gray-100 rounded-2xl p-4 bg-white shadow-sm cursor-pointer hover:border-blue-400 transition-all hover:shadow-md">
+                <div className="flex items-center justify-between mb-3 border-b border-gray-50 pb-3">
                   <div className="flex items-center space-x-3">
-                    <Package size={16} className="text-blue-600" />
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <Package size={20} className="text-blue-600" />
+                    </div>
                     <div>
                       <h4 className="font-bold text-gray-800">Crop: {transaction.crop_listings?.variety || 'Unknown'}</h4>
-                      <p className="text-sm font-semibold text-green-700">Amount: ₹{(transaction.final_amount || transaction.amount || 0).toLocaleString()}</p>
+                      <p className="text-sm font-semibold text-green-700">{t('farmer.amount')}: ₹{(transaction.final_amount || transaction.amount || 0).toLocaleString()}</p>
                     </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusColor(transaction.status, transaction.payment_status)}`}>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${getStatusColor(transaction.status, transaction.payment_status)}`}>
                     {getStatusText(transaction.status, transaction.payment_status)}
                   </span>
                 </div>
 
-                <div className="text-sm text-gray-600 mb-4">
-                  <p><strong>Farmer:</strong> {transaction.farmer?.full_name || 'N/A'}</p>
-                  <p><strong>Phone:</strong> {transaction.farmer?.phone || 'N/A'}</p>
-                  <p className="text-xs text-gray-400 mt-1">Order Date: {new Date(transaction.created_at).toLocaleDateString()}</p>
+                <div className="text-sm text-gray-600 mb-4 grid grid-cols-2 gap-2">
+                  <div className="bg-gray-50 p-2 rounded-lg">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">{t('profile.farmer')}</p>
+                    <p className="font-bold text-gray-700 line-clamp-1">{transaction.farmer?.full_name || 'N/A'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-2 rounded-lg">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">{t('farmer.phone')}</p>
+                    <p className="font-bold text-gray-700">{transaction.farmer?.phone || 'N/A'}</p>
+                  </div>
                 </div>
 
-                <div className="flex space-x-2 mt-3">
+                <div className="flex space-x-2">
                   <button onClick={(e) => {
                     e.stopPropagation();
                     setSelectedTransactionId(selectedTransactionId === transaction.id ? null : transaction.id);
-                  }} className="flex-1 py-2 px-4 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200">
+                  }} className="flex-1 py-2.5 px-4 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors">
                     {selectedTransactionId === transaction.id ? 'Hide Details' : 'View Details'}
                   </button>
                 
@@ -231,36 +242,92 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                         otherUserName: transaction.farmer?.full_name || 'Farmer'
                       });
                     }} 
-                    className="flex-1 py-2 px-4 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 flex items-center justify-center space-x-2"
+                    className="flex-1 py-2.5 px-4 bg-green-50 text-green-700 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center justify-center space-x-2"
                   >
-                    <span>Message Farmer</span>
+                    <span>{t('trader.messageFarmer')}</span>
                   </button>
                 </div>
 
                 {selectedTransactionId === transaction.id && (
-                  <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200 shadow-inner space-y-3">
-                    <h4 className="font-semibold text-gray-800 text-sm border-b pb-2">सौदा विवरण / Deal Details</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-gray-500 text-xs">Crop / फसल</p>
-                        <p className="font-medium text-gray-800">{transaction.crop_listings?.variety || 'Unknown'}</p>
+                  <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <h4 className="font-black text-gray-800 text-xs uppercase tracking-widest border-b pb-2">{t('trader.dealDetails')}</h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white p-2 rounded-xl">
+                        <p className="text-gray-400 text-[10px] font-bold uppercase">Variety</p>
+                        <p className="font-bold text-gray-800">{transaction.crop_listings?.variety || 'Unknown'}</p>
                       </div>
-                      <div>
-                        <p className="text-gray-500 text-xs">Quantity / मात्रा</p>
-                        <p className="font-medium text-gray-800">{transaction.bids?.[0]?.quantity || transaction.bids?.quantity || 0} Quintal</p>
+                      <div className="bg-white p-2 rounded-xl">
+                        <p className="text-gray-400 text-[10px] font-bold uppercase">Quantity</p>
+                        <p className="font-bold text-gray-800">{transaction.bids?.[0]?.quantity || transaction.bids?.quantity || 0} Qtl</p>
                       </div>
                     </div>
 
-                    {(transaction.status === 'pending_payment' || transaction.payment_status === 'yet_to_paid') && (
-                      <button onClick={(e) => {
-                        e.stopPropagation();
-                        handlePayment(transaction);
-                      }} disabled={processingPayment === transaction.id} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex justify-center items-center">
-                        {processingPayment === transaction.id ? 'Processing...' : `Pay ₹${transaction.final_amount} Now`}
+                    {(transaction.status === 'pending_payment' || transaction.payment_status === 'yet_to_paid') ? (
+                      <button 
+                        disabled={processingPayment === transaction.id}
+                        onClick={(e) => { e.stopPropagation(); handlePayment(transaction); }}
+                        className="mt-4 w-full bg-indigo-600 text-white rounded-lg py-3 font-bold shadow-md hover:bg-indigo-700 transition-all active:scale-95"
+                      >
+                        {processingPayment === transaction.id ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('trader.payNow')}
                       </button>
+                    ) : (
+                      <div className="mt-4 flex items-center justify-center text-green-600 font-bold text-sm bg-green-50 py-3 rounded-xl">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />
+                        {t('trader.paid')}
+                      </div>
                     )}
                   </div>
                 )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 🟢 Active Bids Section */}
+      {liveBids.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+          <div className="p-4 border-b bg-indigo-50/50">
+            <h3 className="text-lg font-semibold text-indigo-900">{t('trader.activeBids')}</h3>
+          </div>
+          <div className="p-4 space-y-3">
+            {liveBids.filter(b => b.status === 'pending').map((bid) => (
+              <div key={bid.id} className="p-3 border rounded-xl bg-white shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-gray-800 text-sm">{bid.crop_listings?.variety || 'Unknown'}</p>
+                  <p className="text-xs text-gray-500">My Bid: ₹{bid.amount}/kg · {bid.quantity}Q</p>
+                </div>
+                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-[10px] font-bold uppercase">Pending</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 🛒 Market Pulse */}
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 overflow-hidden">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800">{t('trader.marketPulse')}</h3>
+          <div className="flex items-center text-red-500 text-xs font-bold uppercase animate-pulse">
+            <div className="w-2 h-2 bg-red-500 rounded-full mr-1.5" />
+            Live Deals
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {liveProduce.length === 0 ? (
+            <div className="col-span-full text-center py-10 bg-gray-50 rounded-xl">
+              {t('trader.noProduce')}
+            </div>
+          ) : (
+            liveProduce.slice(0, 5).map((p) => (
+              <div key={p.id} className="min-w-[200px] bg-gray-50 rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
+                  <Package className="text-green-600" size={24} />
+                </div>
+                <h4 className="font-bold text-gray-800 text-sm line-clamp-1">{p.variety || 'Product'}</h4>
+                <p className="text-xs text-green-700 font-bold">₹{p.current_price}/kg</p>
+                <p className="text-[10px] text-gray-400 mt-1">{p.location}</p>
+                <button className="mt-2 w-full py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold shadow-sm">View Deal</button>
               </div>
             ))
           )}

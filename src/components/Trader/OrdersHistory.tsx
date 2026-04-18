@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { ShoppingBag, CheckCircle, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import LoadingSpinner from '../Shared/LoadingSpinner';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface TraderOrdersHistoryProps {
     traderId: string;
 }
 
 const TraderOrdersHistory: React.FC<TraderOrdersHistoryProps> = ({ traderId }) => {
+    const { t } = useLanguage();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -45,20 +47,20 @@ const TraderOrdersHistory: React.FC<TraderOrdersHistoryProps> = ({ traderId }) =
         }
     };
 
-    if (loading) return <LoadingSpinner message="Loading your orders..." />;
+    if (loading) return <LoadingSpinner message={t('order.loadingOrders')} />;
 
     return (
         <div className="p-4 space-y-4 pb-24">
             <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl p-5 text-white">
-                <h2 className="text-xl font-bold">मेरे ऑर्डर</h2>
-                <p className="text-indigo-100 text-sm">Your Purchases</p>
+                <h2 className="text-xl font-bold">{t('order.myOrders')}</h2>
+                <p className="text-indigo-100 text-sm">{t('order.purchases')}</p>
             </div>
 
             {orders.length === 0 ? (
                 <div className="text-center py-14 bg-gray-50 rounded-xl border border-dashed">
                     <ShoppingBag size={48} className="mx-auto text-gray-300 mb-3" />
-                    <p className="text-gray-500 font-medium">No orders yet</p>
-                    <p className="text-sm text-gray-400">Orders appear here after your bid is accepted by a farmer</p>
+                    <p className="text-gray-500 font-medium">{t('order.noOrders')}</p>
+                    <p className="text-sm text-gray-400">{t('order.noOrdersDesc')}</p>
                 </div>
             ) : (
                 orders.map(order => (
@@ -66,29 +68,29 @@ const TraderOrdersHistory: React.FC<TraderOrdersHistoryProps> = ({ traderId }) =
                         <div className="flex justify-between items-start mb-3">
                             <div>
                                 <h4 className="font-bold text-gray-800">
-                                    {order.crop_listings?.variety || 'Crop'}
+                                    {order.crop_listings?.variety || t('order.crop')}
                                 </h4>
                                 <p className="text-sm text-gray-500">
-                                    Farmer: {order.farmer?.full_name || '—'}
+                                    {t('transaction.farmer')}: {order.farmer?.full_name || '—'}
                                 </p>
                                 <p className="text-xs text-gray-400">{order.crop_listings?.location}</p>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${statusColor(order.status)}`}>
-                                {order.status?.replace('_', ' ')}
+                                {t(`order.status.${order.status}`)}
                             </span>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 text-sm bg-gray-50 rounded-lg p-3">
                             <div className="text-center">
-                                <p className="text-gray-400 text-xs">Paid</p>
+                                <p className="text-gray-400 text-xs">{t('order.paidLabel')}</p>
                                 <p className="font-bold text-green-700">₹{order.final_amount?.toLocaleString()}</p>
                             </div>
                             <div className="text-center border-x border-gray-200">
-                                <p className="text-gray-400 text-xs">Unit</p>
+                                <p className="text-gray-400 text-xs">{t('transaction.unit')}</p>
                                 <p className="font-semibold text-gray-800">{order.crop_listings?.unit}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-gray-400 text-xs">Date</p>
+                                <p className="text-gray-400 text-xs">{t('transaction.date')}</p>
                                 <p className="font-semibold text-gray-800">
                                     {new Date(order.created_at).toLocaleDateString('en-IN')}
                                 </p>

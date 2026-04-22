@@ -4,13 +4,19 @@ import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
 import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../lib/contexts/AuthContext';
 
-const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string, onViewOrderTracking?: (id: string) => void }) => {
+const EnhancedDashboard = ({ farmerId, onViewOrderTracking, onRegisterRefresh }: { 
+  farmerId: string; 
+  onViewOrderTracking?: (id: string) => void;
+  onRegisterRefresh?: (fn: () => Promise<void>) => void;
+}) => {
+  const { user } = useAuth();
   const [myListings, setMyListings] = useState<any[]>([]);
   const [farmerOrders, setFarmerOrders] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<string>('unverified');
+  const [verificationStatus, setVerificationStatus] = useState<string>(user?.verified ? 'verified' : 'unverified');
   const { t } = useLanguage();
   
   // Action State (Modals/Toast)
@@ -42,17 +48,30 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
 
   const fetchDashboardData = async () => {
     try {
-      const { data: userData } = await supabase.from('users').select('verification_status').eq('id', farmerId).single();
-      setVerificationStatus(userData?.verification_status || 'unverified');
+      if (myListings.length === 0 && farmerOrders.length === 0) setLoading(true);
+      const [userResult, listingsRes, ordersRes] = await Promise.all([
+        supabase.from('users').select('verification_status').eq('id', farmerId).maybeSingle(),
+        api.getFarmerListings(farmerId).catch(() => []),
+        api.getFarmerOrders(farmerId).catch(() => [])
+      ]);
 
-      if (userData?.verification_status === 'verified') {
-        const listingsRes = await api.getFarmerListings(farmerId);
-        // Handle variations: array, {data: []}, or {listings: []}
+      if (userResult?.error) {
+        console.error('[FARMER_VERIFY]', userResult.error.message);
+      }
+
+      if (userResult?.data?.verification_status) {
+        setVerificationStatus(userResult.data.verification_status);
+      } else if (user?.verified) {
+        setVerificationStatus('verified');
+      }
+
+      // Load data if verified (either currently or via AuthContext)
+      const currentVerified = (userResult?.data?.verification_status === 'verified') || (user?.verified);
+      
+      if (currentVerified) {
         const listings = Array.isArray(listingsRes) ? listingsRes : (listingsRes?.data || listingsRes?.listings || []);
         setMyListings(listings);
 
-        const ordersRes = await api.getFarmerOrders(farmerId);
-        // Handle variations: array, {data: []}, or {orders: []}
         const orders = Array.isArray(ordersRes) ? ordersRes : (ordersRes?.data || ordersRes?.orders || []);
         setFarmerOrders(orders);
       }
@@ -66,6 +85,8 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
   useEffect(() => {
     if (farmerId) {
       fetchDashboardData();
+      // Register refresh function with parent (for Header refresh button)
+      if (onRegisterRefresh) onRegisterRefresh(fetchDashboardData);
 
       // ✅ M-9 FIX: Added specific filter for this farmer's ID to improve performance
       const channel = supabase.channel(`farmer_${farmerId}_channel`)
@@ -160,7 +181,7 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('farmer.activeListings') || 'Active Listings'}</p>
           <div className="flex items-end justify-between mt-1">
-            <h4 className="text-2xl font-bold text-gray-800">{myListings.length}</h4>
+            <h4 className="text-2xl font-bold text-gray-800">{myListings.filter(l => l.status === 'active').length}</h4>
             <div className="p-2 bg-green-50 rounded-lg">
               <Package size={20} className="text-green-600" />
             </div>
@@ -171,7 +192,7 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
           <div className="flex items-end justify-between mt-1">
             <h4 className="text-xl font-bold text-green-700">₹{
               farmerOrders
-                .filter(o => o.payment_status === 'paid')
+                .filter(o => o.payment_status === 'paid' || o.status === 'paid')
                 .reduce((acc, curr) => acc + (Number(curr.final_amount) || 0), 0)
                 .toLocaleString()
             }</h4>
@@ -185,13 +206,13 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4">{t('farmer.activeListings')}</h3>
         <div className="space-y-4">
-          {myListings.length === 0 ? (
+          {myListings.filter(l => l.status === 'active').length === 0 ? (
             <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed">
               <Package className="mx-auto text-gray-400 mb-2" size={40} />
               <p className="text-gray-500">{t('farmer.noListings')}</p>
             </div>
           ) : (
-            myListings.map((listing) => (
+            myListings.filter(l => l.status === 'active').map((listing) => (
               <div key={listing.id} className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -250,11 +271,19 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
               <div key={order.id} onClick={() => onViewOrderTracking && onViewOrderTracking(order.id)} className="border rounded-lg p-4 bg-white shadow-sm cursor-pointer hover:border-green-300 transition-colors">
                 <div className="flex justify-between items-start mb-3 border-b pb-3">
                   <div>
-                    <h4 className="font-bold text-gray-800">Crop: {order.crop_listings?.variety || 'Unknown'}</h4>
-                    <p className="text-sm font-semibold text-green-700">Amount: ₹{order.final_amount}</p>
+                    <h4 className="font-bold text-gray-800">Crop: {order.crop_listings?.variety || 'Unknown Crop'}</h4>
+                    <p className="text-sm font-semibold text-green-700">Amount: ₹{Number(order.final_amount).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Order: <span className="font-semibold capitalize">{order.status?.replace('_', ' ') || 'confirmed'}</span></p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${order.payment_status === 'paid' ? 'bg-green-100 text-green-700' : order.payment_status === 'processing' ? 'bg-blue-100 text-blue-700' : order.payment_status === 'not_paid' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {order.payment_status === 'yet_to_paid' ? 'Yet To Pay' : order.payment_status.replace('_', ' ')}
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                    (order.payment_status === 'paid' || order.status === 'paid') ? 'bg-green-100 text-green-700' :
+                    order.payment_status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                    order.payment_status === 'not_paid' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {(order.payment_status === 'paid' || order.status === 'paid') ? 'PAID' :
+                     order.payment_status === 'processing' ? 'Processing' :
+                     order.payment_status === 'not_paid' ? 'Disputed' : 'Pending'}
                   </span>
                 </div>
 
@@ -278,7 +307,7 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking }: { farmerId: string
                   </button>
                 </div>
 
-                {order.payment_status === 'processing' && (
+                {(order.payment_status === 'processing' && order.status !== 'paid') && (
                   <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mt-2">
                     <p className="text-sm text-blue-800 font-semibold mb-2 text-center">
                       {t('farmer.paymentReceivedDesc')}

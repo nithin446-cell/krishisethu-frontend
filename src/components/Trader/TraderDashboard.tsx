@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
 import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../lib/contexts/AuthContext';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -20,9 +21,10 @@ interface TraderDashboardProps {
   availableProduce: Produce[]; 
   traderId: string;
   onViewOrderTracking?: (id: string) => void;
+  onRegisterRefresh?: (fn: () => Promise<void>) => void;
 }
 
-const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, traderId, onViewOrderTracking }) => {
+const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, traderId, onViewOrderTracking, onRegisterRefresh }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [liveTransactions, setLiveTransactions] = useState<any[]>([]);
   const [liveProduce, setLiveProduce] = useState<any[]>([]); 
@@ -30,28 +32,40 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState<string | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<string>('unverified');
-  const [activeChat, setActiveChat] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const [verificationStatus, setVerificationStatus] = useState<string>(user?.verified ? 'verified' : 'unverified');
+  const [activeChat, setActiveChat] = useState<{orderId: string, otherUserId: string, otherUserName: string} | null>(null);
 
   const fetchDashboardData = async () => {
     try {
-      const { data: userData } = await supabase.from('users').select('verification_status').eq('id', traderId).single();
-      setVerificationStatus(userData?.verification_status || 'unverified');
+      if (liveTransactions.length === 0 && liveBids.length === 0) setLoading(true);
+      // Fetch data + verification status in parallel — don't let a failed
+      // users query silently block the order/bids fetch (backend auth handles security)
+      const [txData, bidsData, marketData, userResult] = await Promise.all([
+        api.getTraderOrders(traderId).catch(() => []),
+        api.getTraderBids(traderId).catch(() => []),
+        api.getMarket().catch(() => []),
+        supabase.from('users').select('verification_status').eq('id', traderId).maybeSingle()
+      ]);
 
-      if (userData?.verification_status === 'verified') {
-        const [txData, bidsData, marketData] = await Promise.all([
-          api.getTraderOrders(traderId),
-          api.getTraderBids(traderId),
-          api.getMarket()
-        ]);
-        
-        setLiveTransactions(txData || []);
-        setLiveBids(bidsData || []);
-        setLiveProduce(marketData || []);
+      if (userResult?.error) {
+        console.error('[TRADER_VERIFY]', userResult.error.message);
       }
-    } catch (err) {
-      console.error("Failed to load dashboard data:", err);
+
+      // If userResult.data is null, we stick with the existing status (likely from useAuth)
+      if (userResult?.data?.verification_status) {
+        setVerificationStatus(userResult.data.verification_status);
+      } else if (user?.verified) {
+        setVerificationStatus('verified');
+      }
+
+      console.log('[TRADER_DASHBOARD] orders:', txData?.length, 'bids:', bidsData?.length);
+      setLiveTransactions(Array.isArray(txData) ? txData : []);
+      setLiveBids(Array.isArray(bidsData) ? bidsData : []);
+      setLiveProduce(Array.isArray(marketData) ? marketData : []);
+    } catch (err: any) {
+      console.error("[TRADER_DASHBOARD] Failed to load data:", err.message);
     } finally {
       setLoading(false);
     }
@@ -60,6 +74,8 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
   useEffect(() => {
     if (traderId) {
       fetchDashboardData();
+      // Register refresh fn with parent (Header refresh button)
+      if (onRegisterRefresh) onRegisterRefresh(fetchDashboardData);
       const channel = supabase.channel('trader_updates_channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `trader_id=eq.${traderId}` }, () => fetchDashboardData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bids', filter: `trader_id=eq.${traderId}` }, () => fetchDashboardData())
@@ -153,20 +169,25 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
   });
 
   const getStatusColor = (status: string, payment_status: string) => {
-    if (payment_status === 'paid') return 'bg-green-100 text-green-800';
+    if (payment_status === 'paid' || status === 'paid') return 'bg-green-100 text-green-800';
     if (payment_status === 'processing') return 'bg-blue-100 text-blue-800';
     if (payment_status === 'not_paid') return 'bg-red-100 text-red-800';
     if (status === 'pending_payment' || payment_status === 'yet_to_paid') return 'bg-yellow-100 text-yellow-800';
-    if (status === 'pending') return 'bg-gray-100 text-gray-800';
+    if (status === 'delivered') return 'bg-purple-100 text-purple-800';
+    if (status === 'dispatched') return 'bg-indigo-100 text-indigo-800';
+    if (status === 'confirmed') return 'bg-teal-100 text-teal-800';
     return 'bg-gray-100 text-gray-800';
   };
 
   const getStatusText = (status: string, payment_status: string) => {
-    if (payment_status === 'paid') return t('trader.paymentConfirmed');
+    if (payment_status === 'paid' || status === 'paid') return t('trader.paymentConfirmed');
     if (payment_status === 'processing') return t('trader.awaitingConfirmation');
     if (payment_status === 'not_paid') return t('trader.paymentDisputed');
     if (status === 'pending_payment' || payment_status === 'yet_to_paid') return t('trader.pendingPayment');
-    return status;
+    if (status === 'delivered') return 'Delivered';
+    if (status === 'dispatched') return 'Dispatched';
+    if (status === 'confirmed') return 'Order Confirmed';
+    return status?.replace('_', ' ') || 'Unknown';
   };
 
   return (
@@ -205,8 +226,8 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                       <Package size={20} className="text-blue-600" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-gray-800">Crop: {transaction.crop_listings?.variety || 'Unknown'}</h4>
-                      <p className="text-sm font-semibold text-green-700">{t('farmer.amount')}: ₹{(transaction.final_amount || transaction.amount || 0).toLocaleString()}</p>
+                    <h4 className="font-bold text-gray-800">Crop: {transaction.crop_listings?.variety || 'Unknown Crop'}</h4>
+                      <p className="text-sm font-semibold text-green-700">{t('farmer.amount')}: ₹{Number(transaction.final_amount || transaction.amount || 0).toLocaleString()}</p>
                     </div>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${getStatusColor(transaction.status, transaction.payment_status)}`}>
@@ -217,7 +238,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                 <div className="text-sm text-gray-600 mb-4 grid grid-cols-2 gap-2">
                   <div className="bg-gray-50 p-2 rounded-lg">
                     <p className="text-[10px] text-gray-400 uppercase font-bold">{t('profile.farmer')}</p>
-                    <p className="font-bold text-gray-700 line-clamp-1">{transaction.farmer?.full_name || 'N/A'}</p>
+                    <p className="font-bold text-gray-700 line-clamp-1">{transaction.farmer?.full_name || transaction.farmer?.business_name || 'N/A'}</p>
                   </div>
                   <div className="bg-gray-50 p-2 rounded-lg">
                     <p className="text-[10px] text-gray-400 uppercase font-bold">{t('farmer.phone')}</p>

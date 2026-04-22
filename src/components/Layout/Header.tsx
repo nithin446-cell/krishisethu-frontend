@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bell, Globe, MapPin, LogOut } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Bell, Globe, MapPin, LogOut, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface HeaderProps {
@@ -8,10 +8,23 @@ interface HeaderProps {
   role?: string;
   unreadCount?: number;
   onLogout?: () => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
-const Header: React.FC<HeaderProps> = ({ userName, location, role, unreadCount = 0, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ userName, location, role, unreadCount = 0, onLogout, onRefresh }) => {
   const { t } = useLanguage();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing || !onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      // Keep spin going for at least 600ms for visual feedback
+      setTimeout(() => setIsRefreshing(false), 600);
+    }
+  }, [isRefreshing, onRefresh]);
 
   return (
     <header className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-b-xl shadow-lg">
@@ -26,10 +39,24 @@ const Header: React.FC<HeaderProps> = ({ userName, location, role, unreadCount =
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           <button className="p-2 rounded-full hover:bg-green-500 transition-colors">
             <Globe size={20} />
           </button>
+
+          {onRefresh && (
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 rounded-full hover:bg-green-500 transition-colors disabled:opacity-60"
+              title="Refresh dashboard"
+            >
+              <RefreshCw
+                size={20}
+                className={isRefreshing ? 'animate-spin' : 'transition-transform hover:rotate-180 duration-300'}
+              />
+            </button>
+          )}
 
           <button className="relative p-2 rounded-full hover:bg-green-500 transition-colors">
             <Bell size={20} />

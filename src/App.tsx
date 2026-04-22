@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './lib/contexts/AuthContext';
 import { DataProvider } from './lib/contexts/DataContext';
@@ -51,47 +51,53 @@ function AppContent() {
   const [schemes, setSchemes] = useState<any[]>([]);
   const [traders, setTraders] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const dashboardRefreshRef = useRef<(() => Promise<void>) | null>(null);
 
   const handleSplashComplete = () => setAppState('language');
   const handleLanguageContinue = () => setAppState('auth');
   const handleAuthSuccess = () => setAppState('main');
 
-  useEffect(() => {
-    if (currentUser?.id) {
-      api.getMyBankAccount()
-        .then(res => {
-          setHasBankAccount(res?.has_account && res?.is_verified);
-        })
-        .catch(err => {
-          console.error("Failed to fetch bank account status:", err);
-          setHasBankAccount(false);
-        });
-    }
-  }, [currentUser?.id]); 
+  const fetchAppGlobalData = useCallback(async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      // 1. Bank Account Status
+      const bankRes = await api.getMyBankAccount();
+      setHasBankAccount(bankRes?.has_account && bankRes?.is_verified);
 
-  // 📡 Real-time Data Fetching (Schemes, Traders, Notifications)
-  useEffect(() => {
-    if (currentUser?.id && appState === 'main') {
-      // 1. Fetch Schemes
+      // 2. Schemes & Traders
       api.getGovernmentSchemes().then(setSchemes).catch(err => console.error("Schemes error:", err));
-
-      // 2. Fetch Traders
       api.getTraders().then(setTraders).catch(err => console.error("Traders error:", err));
 
-      // 3. Simple Notification Logic: Count pending/processing orders
+      // 3. Notification Logic
       if (currentUser.type === 'farmer') {
-        api.getFarmerOrders(currentUser.id).then(orders => {
-          const count = orders.filter((o: any) => o.payment_status === 'processing' || o.status === 'pending').length;
-          setUnreadCount(count);
-        }).catch(() => setUnreadCount(0));
+        const orders = await api.getFarmerOrders(currentUser.id).catch(() => []);
+        const count = orders.filter((o: any) => o.payment_status === 'processing' || o.status === 'pending').length;
+        setUnreadCount(count);
       } else if (currentUser.type === 'trader') {
-        api.getTraderBids(currentUser.id).then(bids => {
-          const count = bids.filter((b: any) => b.status === 'accepted').length;
-          setUnreadCount(count);
-        }).catch(() => setUnreadCount(0));
+        const bids = await api.getTraderBids(currentUser.id).catch(() => []);
+        const count = bids.filter((b: any) => b.status === 'accepted').length;
+        setUnreadCount(count);
       }
+    } catch (error) {
+      console.error("[GLOBAL_FETCH_ERROR]", error);
     }
-  }, [currentUser?.id, appState]);
+  }, [currentUser?.id, currentUser?.type]);
+
+  useEffect(() => {
+    if (currentUser?.id && appState === 'main') {
+      fetchAppGlobalData();
+    }
+  }, [currentUser?.id, appState, fetchAppGlobalData]); 
+
+  const handleRefresh = async () => {
+    // 1. Refresh App Shell Data (Notifications, etc)
+    await fetchAppGlobalData();
+    // 2. Refresh Active Dashboard Data (Orders, Bids)
+    if (dashboardRefreshRef.current) {
+      await dashboardRefreshRef.current();
+    }
+  };
 
   // 🔔 FCM Notification Registration
   useEffect(() => {
@@ -190,14 +196,14 @@ function AppContent() {
               <EnhancedDashboard farmerId={user.id} onViewOrderTracking={(orderId) => {
                 setTrackingOrderId(orderId);
                 setActiveTab('order-tracking');
-              }} />
+              }} onRegisterRefresh={(fn) => { dashboardRefreshRef.current = fn; }} />
             </div>
           </>
         );
         if (user.type === 'trader') return <div className="p-4 space-y-6"><TraderDashboard traderId={user.id} availableProduce={produces} onViewOrderTracking={(orderId) => {
           setTrackingOrderId(orderId);
           setActiveTab('order-tracking');
-        }} /></div>;
+        }} onRegisterRefresh={(fn) => { dashboardRefreshRef.current = fn; }} /></div>;
         if (user.type === 'admin') return renderAdminContent();
         return null;
 
@@ -313,7 +319,8 @@ function AppContent() {
               location={currentUser.location} 
               role={currentUser.type}
               unreadCount={unreadCount} 
-              onLogout={handleLogout} 
+              onLogout={handleLogout}
+              onRefresh={handleRefresh}
             />
           )}
 

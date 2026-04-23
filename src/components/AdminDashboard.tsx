@@ -23,6 +23,9 @@ interface KYCRecord {
   selfie_url: string; aadhaar_doc_url: string;
   face_match_score: number | null;
   status: string; submitted_at: string; rejection_reason?: string;
+  role: 'farmer' | 'trader';
+  is_legacy?: boolean;
+  document_type?: string;
 }
 interface Dispute {
   id: string; order_id: string;
@@ -110,6 +113,9 @@ const Badge = ({ status }: { status: string }) => {
     kyc_pending: 'bg-orange-100 text-orange-800',
     bank_pending:'bg-blue-100 text-blue-800',
   };
+  
+  if (!status) return <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Unknown</span>;
+  
   return (
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${map[status] || 'bg-gray-100 text-gray-600'}`}>
       {status.replace('_', ' ')}
@@ -705,8 +711,8 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <h3 className="text-base font-bold text-white">KYC Review — {kycModal.user_name}</h3>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${(kycModal as any).role === 'trader' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'}`}>
-                    {(kycModal as any).role || 'farmer'}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${kycModal.role === 'trader' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'}`}>
+                    {kycModal.role || 'farmer'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">Submitted {fmtDate(kycModal.submitted_at)}</p>
@@ -754,7 +760,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                   <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl p-4 space-y-3">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Document Details</p>
                     <div className="flex gap-8">
-                      <div><p className="text-xs text-slate-500">Document Type</p><p className="text-sm text-white font-bold">{(kycModal as any).document_type || 'Trader License / GSTIN'}</p></div>
+                      <div><p className="text-xs text-slate-500">Document Type</p><p className="text-sm text-white font-bold">{kycModal.document_type || 'Trader License / GSTIN'}</p></div>
                       <div><p className="text-xs text-slate-500">Status</p><p className="text-sm text-amber-400 font-bold capitalize">{kycModal.status}</p></div>
                     </div>
                     <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700">

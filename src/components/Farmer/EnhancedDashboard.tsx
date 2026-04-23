@@ -49,11 +49,24 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking, onRegisterRefresh }:
   const fetchDashboardData = async () => {
     try {
       if (myListings.length === 0 && farmerOrders.length === 0) setLoading(true);
+      console.log('[FARMER_DASHBOARD] Fetching data for:', farmerId);
       const [userResult, listingsRes, ordersRes] = await Promise.all([
         supabase.from('users').select('verification_status').eq('id', farmerId).maybeSingle(),
-        api.getFarmerListings(farmerId).catch(() => []),
-        api.getFarmerOrders(farmerId).catch(() => [])
+        api.getFarmerListings(farmerId).catch(err => {
+          console.error('[FARMER_DASHBOARD] Listings fetch failed:', err);
+          return [];
+        }),
+        api.getFarmerOrders(farmerId).catch(err => {
+          console.error('[FARMER_DASHBOARD] Orders fetch failed:', err);
+          return [];
+        })
       ]);
+
+      console.log('[FARMER_DASHBOARD] Results:', {
+        userStatus: userResult?.data?.verification_status,
+        listingsCount: Array.isArray(listingsRes) ? listingsRes.length : 'N/A',
+        ordersCount: Array.isArray(ordersRes) ? ordersRes.length : (ordersRes?.data?.length || 'N/A')
+      });
 
       if (userResult?.error) {
         console.error('[FARMER_VERIFY]', userResult.error.message);
@@ -298,8 +311,12 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking, onRegisterRefresh }:
                 <div className="flex justify-between items-start mb-3 border-b pb-3">
                   <div>
                     <h4 className="font-bold text-gray-800">Crop: {order.crop_listings?.variety || 'Unknown Crop'}</h4>
-                    <p className="text-sm font-semibold text-green-700">Amount: ₹{Number(order.final_amount).toLocaleString()}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Order: <span className="font-semibold capitalize">{order.status?.replace('_', ' ') || 'confirmed'}</span></p>
+                    <div className="text-xs text-gray-500 my-1 space-y-0.5">
+                      <p>Price: ₹{Number(order.crop_listings?.current_price || 0).toLocaleString()}/kg</p>
+                      <p>Quantity: {order.bids?.[0]?.quantity || order.bids?.quantity || order.quantity || 'N/A'} kg</p>
+                    </div>
+                    <p className="text-sm font-semibold text-green-700">Amount: ₹{Number(order.final_amount || 0).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mt-1">Order: <span className="font-semibold capitalize">{order.status?.replace('_', ' ') || 'confirmed'}</span></p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
                     (order.payment_status === 'paid' || order.status === 'paid') ? 'bg-green-100 text-green-700' :

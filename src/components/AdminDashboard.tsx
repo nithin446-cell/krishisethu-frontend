@@ -146,7 +146,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [kycFilter, setKycFilter]         = useState<'pending'|'approved'|'rejected'>('pending');
   const [userSearch, setUserSearch]       = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<'all'|'farmer'|'trader'>('all');
-  const [payoutFilter, setPayoutFilter]   = useState<'all'|'failed'|'kyc_pending'|'bank_pending'>('all');
+  const [payoutFilter, setPayoutFilter]   = useState<'all'|'failed'|'history'|'bank_pending'>('all');
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -548,12 +548,14 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         {tab === 'payouts' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <p className="text-lg font-bold text-white">Stuck Payouts</p>
+              <p className="text-lg font-bold text-white">
+                {payoutFilter === 'history' ? 'Transaction History' : 'Stuck Payouts'}
+              </p>
               <div className="flex gap-2">
-                {(['all','failed','kyc_pending','bank_pending'] as const).map(f => (
+                {(['all','failed','history','bank_pending'] as const).map(f => (
                   <button key={f} onClick={() => setPayoutFilter(f)}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-colors ${payoutFilter === f ? 'bg-green-700 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
-                    {f.replace('_',' ')}
+                    {f === 'history' ? 'Transaction History' : f.replace('_',' ')}
                   </button>
                 ))}
               </div>
@@ -564,7 +566,9 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 {(!payouts || payouts.length === 0) ? (
                   <div className="bg-slate-900 rounded-xl border border-slate-800 text-center py-16 text-slate-500">
                     <Landmark size={32} className="mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">No stuck payouts</p>
+                    <p className="text-sm">
+                      {payoutFilter === 'history' ? 'No payment history yet' : 'No stuck payouts'}
+                    </p>
                   </div>
                 ) : (Array.isArray(payouts) ? payouts : []).map(p => (
                   <div key={p.id} className="bg-slate-900 rounded-xl border border-slate-800 p-4 flex items-center gap-4 flex-wrap">
@@ -585,10 +589,16 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                       <p className="text-lg font-bold text-green-400 font-mono">{inr(p.payout_amount)}</p>
                       <p className="text-xs text-slate-500">{fmtDate(p.created_at)}</p>
                     </div>
-                    <button onClick={() => setPayoutModal(p)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-white bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg transition-colors shrink-0">
-                      <Send size={12} /> Pay now
-                    </button>
+                    {p.status !== 'paid' ? (
+                      <button onClick={() => setPayoutModal(p)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-white bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg transition-colors shrink-0">
+                        <Send size={12} /> Pay now
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-green-500 bg-green-900/20 px-3 py-2 rounded-lg">
+                        <CheckCircle size={14} /> Completed
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -60,7 +60,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
         setVerificationStatus('verified');
       }
 
-      console.log('[TRADER_DASHBOARD] orders:', txData?.length, 'bids:', bidsData?.length);
+      console.log('[TRADER_DASHBOARD] Fetching for:', traderId, 'orders:', txData?.length, 'bids:', bidsData?.length);
       setLiveTransactions(Array.isArray(txData) ? txData : []);
       setLiveBids(Array.isArray(bidsData) ? bidsData : []);
       setLiveProduce(Array.isArray(marketData) ? marketData : []);

@@ -12,6 +12,7 @@ interface BidPlacementModalProps {
         basePrice?: number;
         currentPrice?: number;
         farmerName?: string;
+        image_url?: string;
         bids?: any[];
     };
     traderId: string;
@@ -34,6 +35,7 @@ const BidPlacementModal: React.FC<BidPlacementModalProps> = ({
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showFullscreen, setShowFullscreen] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -80,9 +82,21 @@ const BidPlacementModal: React.FC<BidPlacementModalProps> = ({
                 {/* Produce Summary */}
                 <div className="p-5 bg-green-50 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <div 
+                        className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center overflow-hidden cursor-zoom-in group relative"
+                        onClick={() => produce.image_url && setShowFullscreen(true)}
+                    >
+                        {produce.image_url ? (
+                            <>
+                                <img src={produce.image_url} alt={produce.name} className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                    <TrendingUp size={14} className="text-white" />
+                                </div>
+                            </>
+                        ) : (
                             <Package size={22} className="text-green-600" />
-                        </div>
+                        )}
+                    </div>
                         <div className="flex-1">
                             <p className="font-bold text-gray-800">{produce.name}</p>
                             {produce.variety && <p className="text-xs text-gray-500">{produce.variety}</p>}
@@ -191,6 +205,28 @@ const BidPlacementModal: React.FC<BidPlacementModalProps> = ({
                     </div>
                 </form>
             </div>
+
+            {/* Fullscreen Image Preview */}
+            {showFullscreen && produce.image_url && (
+                <div 
+                    className="fixed inset-0 z-[100] bg-black/95 flex flex-col animate-in fade-in duration-200"
+                    onClick={() => setShowFullscreen(false)}
+                >
+                    <div className="flex justify-between items-center p-4">
+                        <h3 className="text-white font-bold">{produce.name}</h3>
+                        <button className="p-2 bg-white/10 rounded-full text-white">
+                            <X size={24} />
+                        </button>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center p-4">
+                        <img 
+                            src={produce.image_url} 
+                            alt={produce.name} 
+                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

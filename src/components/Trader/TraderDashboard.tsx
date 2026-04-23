@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Bell, ShieldAlert, FileText, Loader2 } from 'lucide-react';
+import { Package, Bell, ShieldAlert, FileText, Loader2, Camera, MessageSquare } from 'lucide-react';
 import { Produce } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
@@ -136,7 +136,32 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
     }
   };
 
-  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
+  const DashboardSkeleton = () => (
+    <div className="p-4 space-y-6 animate-pulse">
+      {/* Welcome Banner Skeleton */}
+      <div className="h-28 bg-blue-100 rounded-2xl shadow-sm"></div>
+      
+      {/* Orders Tracking Skeleton */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 space-y-4">
+        <div className="h-6 w-1/3 bg-gray-200 rounded-lg mb-4"></div>
+        {[1, 2].map(i => (
+          <div key={i} className="h-56 bg-gray-50 rounded-2xl border border-gray-100"></div>
+        ))}
+      </div>
+
+      {/* Market Pulse Skeleton */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
+        <div className="h-6 w-1/4 bg-gray-200 rounded-lg mb-6"></div>
+        <div className="flex gap-4 overflow-hidden">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="min-w-[200px] h-40 bg-gray-50 rounded-2xl border border-gray-100"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (loading) return <DashboardSkeleton />;
 
   // 🛑 THE GATEKEEPER LOCKOUT 🛑
   if (verificationStatus !== 'verified') {
@@ -257,6 +282,17 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
+                      onViewOrderTracking && onViewOrderTracking(transaction.id);
+                    }} 
+                    className="flex-1 py-2.5 px-4 bg-teal-50 text-teal-700 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Camera size={14} className="mr-1" />
+                    <span>View Images</span>
+                  </button>
+
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setActiveChat({
                         orderId: transaction.id,
                         otherUserId: transaction.farmer_id,
@@ -265,6 +301,7 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
                     }} 
                     className="flex-1 py-2.5 px-4 bg-green-50 text-green-700 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center justify-center space-x-2"
                   >
+                    <MessageSquare size={14} className="mr-1" />
                     <span>{t('trader.messageFarmer')}</span>
                   </button>
                 </div>

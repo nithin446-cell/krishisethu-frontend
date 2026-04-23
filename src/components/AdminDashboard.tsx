@@ -4,7 +4,7 @@ import {
   Search, CheckCircle, XCircle, Clock, ChevronRight, RefreshCw,
   Eye, EyeOff, LogOut, Ban, UserCheck, ArrowUpRight, Filter,
   Download, Send, MoreVertical, Loader2, AlertCircle, X,
-  Activity, Package, Star, FileText, Landmark, ChevronDown
+  Activity, Package, Star, FileText, Landmark, ChevronDown, Camera, Truck
 } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -49,6 +49,22 @@ interface PayoutRecord {
   status: string; failure_reason?: string;
   razorpay_payment_id?: string | null;
   created_at: string; bank_name?: string;
+}
+interface AdminOrder {
+  id: string;
+  crop_name: string;
+  listing_title: string;
+  quantity: number;
+  unit: string;
+  agreed_price: number;
+  final_amount: number;
+  status: string;
+  farmer_name: string;
+  trader_name: string;
+  payment_status: string;
+  created_at: string;
+  produce_image_url?: string;
+  delivery_photo_url?: string;
 }
 
 const inr = (n: number) => new Intl.NumberFormat('en-IN', {
@@ -103,7 +119,7 @@ const Badge = ({ status }: { status: string }) => {
 
 // ══════════════════════════════════════════════════════════════════════
 const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-  const [tab, setTab] = useState<'overview'|'kyc'|'disputes'|'users'|'payouts'>('overview');
+  const [tab, setTab] = useState<'overview'|'kyc'|'disputes'|'users'|'payouts'|'orders'>('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -112,12 +128,14 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [disputes, setDisputes]     = useState<Dispute[]>([]);
   const [users, setUsers]           = useState<AdminUser[]>([]);
   const [payouts, setPayouts]       = useState<PayoutRecord[]>([]);
+  const [orders, setOrders]         = useState<AdminOrder[]>([]);
   const [tabLoading, setTabLoading] = useState(false);
 
   // Modals
   const [kycModal, setKycModal]           = useState<KYCRecord | null>(null);
   const [disputeModal, setDisputeModal]   = useState<Dispute | null>(null);
   const [payoutModal, setPayoutModal]     = useState<PayoutRecord | null>(null);
+  const [imageModal, setImageModal]       = useState<{produce: string | null, delivery: string | null} | null>(null);
 
   // Action states
   const [actionLoading, setActionLoading] = useState(false);
@@ -154,6 +172,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         if (tab === 'disputes') setDisputes(await api.adminGetDisputes());
         if (tab === 'users')    setUsers(await api.adminGetUsers({ search: userSearch, role: userRoleFilter }));
         if (tab === 'payouts')  setPayouts(await api.adminGetPayouts(payoutFilter));
+        if (tab === 'orders')   setOrders(await api.getAdminDashboard());
       } catch (err) {
         console.error("Fetch error:", err);
         showToast(`Could not load ${tab} — backend unreachable.`, false);
@@ -224,6 +243,7 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const tabs = [
     { id: 'overview',  label: 'Overview',  icon: <Activity size={16} />, badge: undefined },
     { id: 'kyc',       label: 'KYC',       icon: <ShieldCheck size={16} />, badge: stats?.pending_kyc || 0 },
+    { id: 'orders',    label: 'Orders',    icon: <Package size={16} />, badge: undefined },
     { id: 'disputes',  label: 'Disputes',  icon: <AlertTriangle size={16} />, badge: stats?.open_disputes || 0 },
     { id: 'users',     label: 'Users',     icon: <Users size={16} />, badge: undefined },
     { id: 'payouts',   label: 'Payouts',   icon: <IndianRupee size={16} />, badge: stats?.pending_payouts || 0 },
@@ -575,6 +595,90 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             )}
           </div>
         )}
+
+        {/* ════ ORDERS HISTORY ══════════════════════════════════════════ */}
+        {tab === 'orders' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-bold text-white">Order History</p>
+              <button onClick={() => api.getAdminDashboard().then(setOrders)} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400">
+                <RefreshCw size={16} className={tabLoading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            {tabLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin text-green-500" size={24} /></div> : (
+              <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto">
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-500 text-xs">
+                      <th className="text-left px-5 py-3 font-medium">Order ID</th>
+                      <th className="text-left px-4 py-3 font-medium">Produce</th>
+                      <th className="text-left px-4 py-3 font-medium">Farmer</th>
+                      <th className="text-left px-4 py-3 font-medium">Trader</th>
+                      <th className="text-right px-4 py-3 font-medium">Amount</th>
+                      <th className="text-left px-4 py-3 font-medium">Status</th>
+                      <th className="text-left px-4 py-3 font-medium">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {(Array.isArray(orders) ? orders : []).map(o => (
+                      <tr key={o.id} className="hover:bg-slate-800/50 transition-colors">
+                        <td className="px-5 py-3 font-mono text-xs text-green-400">
+                          #{o.id.slice(0, 8).toUpperCase()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {o.produce_image_url ? (
+                              <img src={o.produce_image_url} className="w-8 h-8 rounded object-cover border border-slate-700" alt="" />
+                            ) : (
+                              <div className="w-8 h-8 bg-slate-800 rounded flex items-center justify-center border border-slate-700">
+                                <Package size={14} className="text-slate-600" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-white">{o.crop_name}</p>
+                              <p className="text-[10px] text-slate-500 truncate max-w-[150px]">{o.listing_title}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-300">{o.farmer_name}</td>
+                        <td className="px-4 py-3 text-slate-300">{o.trader_name}</td>
+                        <td className="px-4 py-3 text-right font-mono text-white font-bold">
+                          {inr(o.final_amount)}
+                          <p className="text-[10px] text-slate-500 font-normal">{o.quantity} {o.unit}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge status={o.status} />
+                          {o.payment_status === 'paid' && (
+                            <span className="ml-2 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Payment confirmed" />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-400">
+                          {fmtDateTime(o.created_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button 
+                            onClick={() => setImageModal({ produce: o.produce_image_url || null, delivery: o.delivery_photo_url || null })}
+                            className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                            title="View order images"
+                          >
+                            <Camera size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(!orders || orders.length === 0) && !tabLoading && (
+                  <div className="text-center py-16 text-slate-500">
+                    <Package size={32} className="mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">No orders have been placed yet</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ════ KYC REVIEW MODAL ════════════════════════════════════════ */}
@@ -754,6 +858,51 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60">
                 {actionLoading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                 {actionLoading ? 'Processing...' : 'Confirm — Send Payment Now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════ IMAGE PREVIEW MODAL ═════════════════════════════════════ */}
+      {imageModal && (
+        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-4xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Camera size={16} className="text-green-500" /> Order Images
+              </h3>
+              <button onClick={() => setImageModal(null)} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Listing Photo (Produce)</p>
+                {imageModal.produce ? (
+                  <img src={imageModal.produce} className="w-full h-64 object-cover rounded-xl border border-slate-800 shadow-2xl" alt="Produce" />
+                ) : (
+                  <div className="w-full h-64 bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-500 border border-dashed border-slate-700">
+                    <Package size={32} className="mb-2 opacity-20" />
+                    <p className="text-xs">No produce image available</p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Delivery Confirmation (Proof)</p>
+                {imageModal.delivery ? (
+                  <img src={imageModal.delivery} className="w-full h-64 object-cover rounded-xl border border-slate-800 shadow-2xl" alt="Delivery Proof" />
+                ) : (
+                  <div className="w-full h-64 bg-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-500 border border-dashed border-slate-700">
+                    <Truck size={32} className="mb-2 opacity-20" />
+                    <p className="text-xs">Waiting for delivery proof upload...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="bg-slate-800/50 p-4 text-center">
+              <button onClick={() => setImageModal(null)} className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition-colors">
+                Close Viewer
               </button>
             </div>
           </div>

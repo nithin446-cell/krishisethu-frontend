@@ -75,12 +75,69 @@ const EnhancedAddProduce: React.FC<EnhancedAddProduceProps> = ({ onSubmit, onBac
   };
 
   const detectLocation = async () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser');
+      return;
+    }
+
     setIsDetectingLocation(true);
-    setTimeout(() => {
-      const locations = ['Khadakwasla, Pune', 'Baramati, Pune', 'Nashik', 'Aurangabad'];
-      setFormData({ ...formData, location: locations[Math.floor(Math.random() * locations.length)] });
-      setIsDetectingLocation(false);
-    }, 2000);
+    setError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          
+          // Use Nominatim (OpenStreetMap) for free reverse geocoding
+          // We include a User-Agent or specific headers if possible, but for client-side fetch it usually works
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+            { 
+              headers: { 
+                'Accept-Language': 'en' 
+              } 
+            }
+          );
+          
+          const data = await response.json();
+          
+          if (data && data.address) {
+            const addr = data.address;
+            // Try to build a readable city/town, state string
+            const city = addr.city || addr.town || addr.village || addr.suburb || addr.county || '';
+            const state = addr.state || '';
+            
+            let locationString = '';
+            if (city) locationString += city;
+            if (state) locationString += (locationString ? ', ' : '') + state;
+            
+            // Fallback if no address found
+            if (!locationString) {
+              locationString = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            }
+            
+            setFormData(prev => ({ ...prev, location: locationString }));
+          } else {
+            // Fallback to coordinates
+            setFormData(prev => ({ ...prev, location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` }));
+          }
+        } catch (err) {
+          console.error('Reverse geocoding error:', err);
+          setError('Could not resolve city name. Coordinates used instead.');
+          // Fallback to coordinates on geocoding failure
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (err) => {
+        console.error('Geolocation error:', err);
+        setIsDetectingLocation(false);
+        let errorMsg = 'Location access denied or unavailable.';
+        if (err.code === 1) errorMsg = 'Please enable location permissions in your browser.';
+        setError(errorMsg);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   // 👇 REWRITTEN TO USE BACKEND API FOR RLS COMPLIANCE

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, CheckCircle, Loader2, IndianRupee as Rupee, AlertTriangle, ShieldAlert, FileText, MessageSquare } from 'lucide-react';
+import { Package, CheckCircle, Loader2, IndianRupee as Rupee, AlertTriangle, ShieldAlert, FileText, MessageSquare, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
 import EnhancedChatInterface from '../Chat/EnhancedChatInterface';
@@ -153,7 +153,33 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking, onRegisterRefresh }:
     });
   };
 
-  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-green-600" size={40} /></div>;
+  const DashboardSkeleton = () => (
+    <div className="p-4 space-y-6 animate-pulse">
+      {/* Stats Skeleton */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="h-28 bg-gray-200 rounded-2xl shadow-sm border border-gray-100"></div>
+        <div className="h-28 bg-gray-200 rounded-2xl shadow-sm border border-gray-100"></div>
+      </div>
+      
+      {/* Active Listings Skeleton */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 space-y-4">
+        <div className="h-6 w-1/3 bg-gray-200 rounded-lg mb-4"></div>
+        {[1, 2].map(i => (
+          <div key={i} className="h-40 bg-gray-50 rounded-xl border border-gray-100"></div>
+        ))}
+      </div>
+
+      {/* Orders Skeleton */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 space-y-4">
+        <div className="h-6 w-1/3 bg-gray-200 rounded-lg mb-4"></div>
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-48 bg-gray-50 rounded-xl border border-gray-100"></div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (loading) return <DashboardSkeleton />;
 
   // 🛑 THE GATEKEEPER LOCKOUT 🛑
   if (verificationStatus !== 'verified') {
@@ -292,19 +318,31 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking, onRegisterRefresh }:
                   <p><strong>{t('farmer.phone')}:</strong> {order.trader?.phone || 'N/A'}</p>
                   <p className="text-xs text-gray-400 mt-1">{t('farmer.orderDate')}: {new Date(order.created_at).toLocaleDateString()}</p>
                   
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveChat({
-                        orderId: order.id,
-                        otherUserId: order.trader_id,
-                        otherUserName: order.trader?.full_name || order.trader?.business_name || 'Trader'
-                      });
-                    }} 
-                    className="mt-3 flex items-center py-1.5 px-3 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-200"
-                  >
-                    <MessageSquare size={14} className="mr-1" /> {t('farmer.messageTrader')}
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveChat({
+                          orderId: order.id,
+                          otherUserId: order.trader_id,
+                          otherUserName: order.trader?.full_name || order.trader?.business_name || 'Trader'
+                        });
+                      }} 
+                      className="mt-3 flex items-center py-1.5 px-3 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-200"
+                    >
+                      <MessageSquare size={14} className="mr-1" /> {t('farmer.messageTrader')}
+                    </button>
+
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewOrderTracking && onViewOrderTracking(order.id);
+                      }} 
+                      className="mt-3 flex items-center py-1.5 px-3 bg-teal-100 text-teal-700 rounded-lg text-xs font-semibold hover:bg-teal-200"
+                    >
+                      <Camera size={14} className="mr-1" /> {t('order.viewImages') || 'View Images'}
+                    </button>
+                  </div>
                 </div>
 
                 {(order.payment_status === 'processing' && order.status !== 'paid') && (

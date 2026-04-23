@@ -31,6 +31,7 @@ const EnhancedBiddingSystem: React.FC<EnhancedBiddingSystemProps> = ({
   const [bidQuantity, setBidQuantity] = useState(produce.quantity.toString());
   const [message, setMessage] = useState('');
   const [showBidForm, setShowBidForm] = useState(false);
+  const [showFullscreen, setShowFullscreen] = useState(false);
 
   // Backend Integration State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,11 +124,18 @@ const EnhancedBiddingSystem: React.FC<EnhancedBiddingSystemProps> = ({
         {/* Produce Details */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
           <div className="flex space-x-4">
-            <img
-              src={produce.images?.[0] || "https://images.pexels.com/photos/1656663/pexels-photo-1656663.jpeg"}
-              alt={produce.name}
-              className="w-20 h-20 rounded-xl object-cover border border-gray-100"
-            />
+            <div className="relative group cursor-zoom-in" onClick={() => setShowFullscreen(true)}>
+              <img
+                src={produce.images?.[0] || "https://images.pexels.com/photos/1656663/pexels-photo-1656663.jpeg"}
+                alt={produce.name}
+                className="w-20 h-20 rounded-xl object-cover border border-gray-100 shadow-sm group-hover:opacity-90 transition-opacity"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-black/40 rounded-full p-1.5">
+                  <TrendingUp size={12} className="text-white" />
+                </div>
+              </div>
+            </div>
             <div className="flex-1">
               <div className="flex items-center space-x-2 mb-2">
                 <h3 className="text-xl font-bold text-gray-800">{produce.name}</h3>
@@ -373,6 +381,36 @@ const EnhancedBiddingSystem: React.FC<EnhancedBiddingSystemProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Image Preview */}
+      {showFullscreen && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/95 flex flex-col animate-in fade-in duration-200"
+          onClick={() => setShowFullscreen(false)}
+        >
+          <div className="flex justify-between items-center p-4">
+            <h3 className="text-white font-bold">{produce.name} - Detailed View</h3>
+            <button className="p-2 bg-white/10 rounded-full text-white">
+              <X size={24} />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4">
+            <img 
+              src={produce.images?.[0] || "https://images.pexels.com/photos/1656663/pexels-photo-1656663.jpeg"} 
+              alt={produce.name} 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+          <div className="p-8 flex justify-center">
+            <button 
+              onClick={() => setShowFullscreen(false)}
+              className="px-8 py-3 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Close Preview
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

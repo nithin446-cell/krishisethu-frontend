@@ -48,6 +48,7 @@ interface Order {
   dispatch_note?: string;
   vehicle_number?: string;
   delivery_photo_url?: string;
+  produce_image_url?: string;
   status_history: StatusEvent[];
 }
 
@@ -96,6 +97,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
   const [toast, setToast] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [modal, setModal] = useState<'dispatch' | 'delivery' | 'dispute' | 'rating' | null>(null);
+  const [imageModal, setImageModal] = useState(false);
 
   const [dispatchNote, setDispatchNote] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
@@ -338,11 +340,24 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
     printWindow.document.close();
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Loader2 className="animate-spin text-green-600" size={32} />
+  const OrderTrackingSkeleton = () => (
+    <div className="min-h-screen bg-gray-50 pb-32 animate-pulse">
+      <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-20 flex items-center gap-3">
+        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+        <div className="flex-1 space-y-2">
+          <div className="h-5 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+        </div>
+      </div>
+      <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+        <div className="h-64 bg-gray-200 rounded-3xl shadow-sm"></div>
+        <div className="h-40 bg-white rounded-2xl border border-gray-100 shadow-sm"></div>
+        <div className="h-24 bg-white rounded-2xl border border-gray-100 shadow-sm"></div>
+      </div>
     </div>
   );
+
+  if (loading) return <OrderTrackingSkeleton />;
   if (!order) return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3 p-4">
       <AlertCircle size={40} className="text-red-400" />
@@ -476,17 +491,30 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
           </div>
         )}
 
-        {/* Delivery photo */}
+        {/* Delivery photo with side-by-side viewer */}
         {order.delivery_photo_url && (
-          <div className="bg-teal-50 border-2 border-teal-100 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col items-center text-center">
-            <div className="flex items-center gap-2 p-4 pb-2">
-              <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                <Camera size={20} className="text-teal-600" />
+          <div className="bg-teal-50 border-2 border-teal-100 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col items-center text-center group">
+            <div className="flex items-center justify-between w-full p-4 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                  <Camera size={20} className="text-teal-600" />
+                </div>
+                <p className="text-base font-bold text-teal-800">{t('order.deliveryProof')}</p>
               </div>
-              <p className="text-base font-bold text-teal-800">{t('order.deliveryProof')}</p>
+              <button 
+                onClick={() => setImageModal(true)}
+                className="px-3 py-1.5 bg-teal-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-teal-700 transition-colors flex items-center gap-1.5"
+              >
+                <Camera size={14} /> Compare Photos
+              </button>
             </div>
             <div className="w-full px-4 pb-4">
-              <img src={order.delivery_photo_url} alt="Delivery proof" className="w-full h-48 object-cover rounded-2xl shadow-inner border border-teal-100" />
+              <div className="relative cursor-pointer" onClick={() => setImageModal(true)}>
+                <img src={order.delivery_photo_url} alt="Delivery proof" className="w-full h-48 object-cover rounded-2xl shadow-inner border border-teal-100" />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                  <span className="bg-white/90 text-teal-700 px-4 py-2 rounded-full text-xs font-bold shadow-lg">View Side-by-Side</span>
+                </div>
+              </div>
               {order.delivered_at && <p className="text-xs font-medium text-teal-600 mt-3 bg-white/50 py-1 rounded-full">Pahunch gaya: {fmt(order.delivered_at)}</p>}
             </div>
           </div>
@@ -725,6 +753,68 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orderId, currentUserId, u
             {actionLoading ? t('common.submitting') || 'Submitting...' : t('transaction.submitRating')}
           </button>
         </ModalWrap>
+      )}
+      {/* ── IMAGE PREVIEW MODAL ── */}
+      {imageModal && (
+        <div className="fixed inset-0 bg-black/95 z-[60] flex flex-col p-4 animate-in fade-in duration-200">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2 text-white">
+              <Camera className="text-green-400" size={24} />
+              <h2 className="text-xl font-bold">Order Images / Verification</h2>
+            </div>
+            <button 
+              onClick={() => setImageModal(false)}
+              className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto pb-20">
+            {/* Listing Image */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-white/70 uppercase text-xs font-bold tracking-widest bg-white/5 p-3 rounded-t-xl border-b border-white/10">
+                <Package size={14} /> Listing Photo (Produce)
+              </div>
+              <div className="aspect-[4/3] bg-white/5 rounded-b-xl overflow-hidden border border-white/10 relative group">
+                {order.produce_image_url ? (
+                  <img src={order.produce_image_url} alt="Original Listing" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 text-sm italic">
+                    <Package size={48} className="mb-2 opacity-20" />
+                    No produce image available
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Delivery Proof */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-white/70 uppercase text-xs font-bold tracking-widest bg-white/5 p-3 rounded-t-xl border-b border-white/10">
+                <Truck size={14} /> Delivery Confirmation (Proof)
+              </div>
+              <div className="aspect-[4/3] bg-white/5 rounded-b-xl overflow-hidden border border-white/10 relative">
+                {order.delivery_photo_url ? (
+                  <img src={order.delivery_photo_url} alt="Delivery Proof" className="w-full h-full object-contain" />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 text-sm italic">
+                    <Camera size={48} className="mb-2 opacity-20" />
+                    Delivery photo not yet uploaded
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-center p-6">
+            <button 
+              onClick={() => setImageModal(false)}
+              className="px-10 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-2xl shadow-xl transition-all active:scale-95"
+            >
+              Close Viewer
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

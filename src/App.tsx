@@ -39,7 +39,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [hasBankAccount, setHasBankAccount] = useState<boolean | null>(null);
 
-  const { user: currentUser, isAuthenticated, isLoading, logout } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading, logout, refreshUser } = useAuth();
 
   // States
   const [produces, setProduces] = useState<Produce[]>([]); 
@@ -91,9 +91,11 @@ function AppContent() {
   }, [currentUser?.id, appState, fetchAppGlobalData]); 
 
   const handleRefresh = async () => {
-    // 1. Refresh App Shell Data (Notifications, etc)
+    // 1. Refresh User Profile (Name, Location, Verification)
+    await refreshUser();
+    // 2. Refresh App Shell Data (Notifications, etc)
     await fetchAppGlobalData();
-    // 2. Refresh Active Dashboard Data (Orders, Bids)
+    // 3. Refresh Active Dashboard Data (Orders, Bids)
     if (dashboardRefreshRef.current) {
       await dashboardRefreshRef.current();
     }

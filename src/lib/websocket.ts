@@ -89,6 +89,7 @@ class WebSocketManager {
                     this.ws?.send(JSON.stringify({
                         type: 'AUTH',
                         token,
+                        user_id: userId,
                         timestamp: new Date().toISOString(),
                     }));
                     resolve();

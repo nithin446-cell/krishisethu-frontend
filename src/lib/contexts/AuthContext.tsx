@@ -160,7 +160,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         full_name: authData.user.user_metadata?.full_name
                             || authData.user.email?.split('@')[0]
                             || 'User',
-                        role: 'farmer',
+                        role: authData.user.user_metadata?.role || 'farmer',
                         phone: null,
                     }, { onConflict: 'id' })
                     .select()
@@ -253,11 +253,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const dbUser = result.user;
             const userData: User = {
                 id: dbUser.id,
-                type: dbUser.role as 'farmer' | 'trader' | 'admin',
-                name: dbUser.full_name || `${dbUser.role.charAt(0).toUpperCase() + dbUser.role.slice(1)} User`,
-                location: dbUser.location || 'India',
+                type: (dbUser.role || data.role) as 'farmer' | 'trader' | 'admin',
+                name: dbUser.full_name || data.full_name || 'User',
+                location: dbUser.location || data.location || 'India',
                 verified: dbUser.verification_status === 'verified',
-                phone: dbUser.phone || data.phone
+                phone: dbUser.phone || data.phone || ''
             };
 
             // Persist session to localStorage

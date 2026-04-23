@@ -372,7 +372,8 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-500 text-xs">
-                        <th className="text-left px-5 py-3 font-medium">Farmer</th>
+                        <th className="text-left px-5 py-3 font-medium">Farmer / Trader</th>
+                        <th className="text-left px-4 py-3 font-medium">Role</th>
                         <th className="text-left px-4 py-3 font-medium">PAN</th>
                         <th className="text-left px-4 py-3 font-medium">Aadhaar</th>
                         <th className="text-left px-4 py-3 font-medium">Face match</th>
@@ -388,8 +389,13 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             <p className="font-semibold text-white">{k.user_name}</p>
                             <p className="text-xs text-slate-500">{k.user_email || k.user_phone}</p>
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs text-slate-300">{k.pan_number}</td>
-                          <td className="px-4 py-3 font-mono text-xs text-slate-300">****{k.aadhaar_last4}</td>
+                          <td className="px-4 py-3">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${k.role === 'trader' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'}`}>
+                              {k.role || 'farmer'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">{k.pan_number || '—'}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">{k.aadhaar_last4 ? (k.aadhaar_last4 === 'MANUAL' ? 'MANUAL' : `****${k.aadhaar_last4}`) : '—'}</td>
                           <td className="px-4 py-3">
                             {typeof k.face_match_score === 'number' ? (
                               <span className={`text-xs font-bold font-mono ${k.face_match_score >= 80 ? 'text-green-400' : k.face_match_score >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
@@ -697,8 +703,13 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-3xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-slate-800">
               <div>
-                <h3 className="text-base font-bold text-white">KYC Review — {kycModal.user_name}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Submitted {fmtDate(kycModal.submitted_at)}</p>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h3 className="text-base font-bold text-white">KYC Review — {kycModal.user_name}</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${(kycModal as any).role === 'trader' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'}`}>
+                    {(kycModal as any).role || 'farmer'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">Submitted {fmtDate(kycModal.submitted_at)}</p>
               </div>
               <button onClick={() => setKycModal(null)} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
                 <X size={18} />
@@ -723,19 +734,38 @@ const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
               </div>
 
               {/* Details */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-800 rounded-xl p-4 space-y-3">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">PAN details</p>
-                  <div><p className="text-xs text-slate-500">PAN number</p><p className="text-sm font-mono text-white font-bold">{kycModal.pan_number}</p></div>
-                  <div><p className="text-xs text-slate-500">Name on PAN</p><p className="text-sm text-white">{kycModal.pan_name}</p></div>
-                  <div><p className="text-xs text-slate-500">Date of birth</p><p className="text-sm text-white">{kycModal.pan_dob}</p></div>
-                </div>
-                <div className="bg-slate-800 rounded-xl p-4 space-y-3">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Aadhaar details</p>
-                  <div><p className="text-xs text-slate-500">Aadhaar (last 4)</p><p className="text-sm font-mono text-white font-bold">**** **** {kycModal.aadhaar_last4}</p></div>
-                  <div><p className="text-xs text-slate-500">Name</p><p className="text-sm text-white">{kycModal.aadhaar_name}</p></div>
-                  <div><p className="text-xs text-slate-500">Address</p><p className="text-xs text-slate-300 leading-relaxed">{kycModal.aadhaar_address}</p></div>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {kycModal.pan_number !== 'MANUAL' ? (
+                  <>
+                    <div className="bg-slate-800 rounded-xl p-4 space-y-3">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">PAN details</p>
+                      <div><p className="text-xs text-slate-500">PAN number</p><p className="text-sm font-mono text-white font-bold">{kycModal.pan_number}</p></div>
+                      <div><p className="text-xs text-slate-500">Name on PAN</p><p className="text-sm text-white">{kycModal.pan_name}</p></div>
+                      <div><p className="text-xs text-slate-500">Date of birth</p><p className="text-sm text-white">{kycModal.pan_dob}</p></div>
+                    </div>
+                    <div className="bg-slate-800 rounded-xl p-4 space-y-3">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Aadhaar details</p>
+                      <div><p className="text-xs text-slate-500">Aadhaar (last 4)</p><p className="text-sm font-mono text-white font-bold">**** **** {kycModal.aadhaar_last4}</p></div>
+                      <div><p className="text-xs text-slate-500">Name</p><p className="text-sm text-white">{kycModal.aadhaar_name}</p></div>
+                      <div><p className="text-xs text-slate-500">Address</p><p className="text-xs text-slate-300 leading-relaxed">{kycModal.aadhaar_address}</p></div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-1 md:col-span-2 bg-slate-800 rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Document Details</p>
+                    <div className="flex gap-8">
+                      <div><p className="text-xs text-slate-500">Document Type</p><p className="text-sm text-white font-bold">{(kycModal as any).document_type || 'Trader License / GSTIN'}</p></div>
+                      <div><p className="text-xs text-slate-500">Status</p><p className="text-sm text-amber-400 font-bold capitalize">{kycModal.status}</p></div>
+                    </div>
+                    <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                      <p className="text-xs text-slate-500 mb-2">Instructions</p>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        This user submitted documents via the manual verification flow. 
+                        Please review the images above to verify their identity and business registration.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Face match score */}

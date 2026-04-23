@@ -52,13 +52,29 @@ const EnhancedChatInterface: React.FC<ChatProps> = ({
 
     // ⚡ WebSocket connection for near-instant delivery
     const token = localStorage.getItem('supabase_token');
-    const wsUrl = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:5000/ws';
-    const ws = new WebSocket(`${wsUrl}?order_id=${orderId}&token=${token}`);
+    const wsUrl = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:10000/ws';
+    const ws = new WebSocket(wsUrl); // No token in URL for security
     wsRef.current = ws;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        type: 'AUTH',
+        token,
+        order_id: orderId
+      }));
+    };
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data);
+        const data = JSON.parse(event.data);
+        
+        // Handle AUTH success or chat messages
+        if (data.type === 'AUTH_SUCCESS') {
+          console.log('[CHAT_WS] Connected to room:', orderId);
+          return;
+        }
+
+        const msg = data; // assuming it's the message object
         // Dedup: skip if we've already added this message from any source
         if (msg.id && seenMsgIds.current.has(msg.id)) return;
         if (msg.id) seenMsgIds.current.add(msg.id);

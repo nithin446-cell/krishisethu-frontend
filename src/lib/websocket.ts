@@ -123,22 +123,19 @@ class WebSocketManager {
         });
     }
 
-    // Attempt to reconnect with exponential backoff
+    // Attempt to reconnect with exponential backoff (no hard limit, capped at 30s)
     private attemptReconnect(userId: string) {
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+        this.reconnectAttempts++;
+        // Cap backoff at 30 seconds to avoid absurdly long delays
+        const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
 
-            console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
+        console.log(`[WebSocket] Reconnecting (attempt ${this.reconnectAttempts}) in ${delay}ms...`);
 
-            setTimeout(() => {
-                this.connect(userId).catch((error) => {
-                    console.error('Reconnection failed:', error);
-                });
-            }, delay);
-        } else {
-            console.error('Max reconnection attempts reached');
-        }
+        setTimeout(() => {
+            this.connect(userId).catch((error) => {
+                console.error('[WebSocket] Reconnection failed:', error);
+            });
+        }, delay);
     }
 
     // Handle incoming messages

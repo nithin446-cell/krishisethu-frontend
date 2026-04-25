@@ -39,15 +39,30 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
 
   const fetchDashboardData = async () => {
     try {
-      if (liveTransactions.length === 0 && liveBids.length === 0) setLoading(true);
-      // Fetch data + verification status in parallel — don't let a failed
-      // users query silently block the order/bids fetch (backend auth handles security)
+      console.log('[TRADER_DASHBOARD] Fetching data for:', traderId);
+      
       const [txData, bidsData, marketData, userResult] = await Promise.all([
-        api.getTraderOrders(traderId).catch(() => []),
-        api.getTraderBids(traderId).catch(() => []),
-        api.getMarket().catch(() => []),
+        api.getTraderOrders(traderId).catch(err => {
+          console.error('[TRADER_DASHBOARD] Orders fetch failed:', err);
+          return [];
+        }),
+        api.getTraderBids(traderId).catch(err => {
+          console.error('[TRADER_DASHBOARD] Bids fetch failed:', err);
+          return [];
+        }),
+        api.getMarket().catch(err => {
+          console.error('[TRADER_DASHBOARD] Market fetch failed:', err);
+          return [];
+        }),
         supabase.from('users').select('verification_status').eq('id', traderId).maybeSingle()
       ]);
+
+      console.log('[TRADER_DASHBOARD] Results:', {
+        ordersCount: Array.isArray(txData) ? txData.length : 'N/A',
+        bidsCount: Array.isArray(bidsData) ? bidsData.length : 'N/A',
+        marketCount: Array.isArray(marketData) ? marketData.length : 'N/A',
+        verificationStatus: userResult?.data?.verification_status
+      });
 
       if (userResult?.error) {
         console.error('[TRADER_VERIFY]', userResult.error.message);
@@ -60,12 +75,11 @@ const TraderDashboard: React.FC<TraderDashboardProps> = ({ availableProduce, tra
         setVerificationStatus('verified');
       }
 
-      console.log('[TRADER_DASHBOARD] Fetching for:', traderId, 'orders:', txData?.length, 'bids:', bidsData?.length);
       setLiveTransactions(Array.isArray(txData) ? txData : []);
       setLiveBids(Array.isArray(bidsData) ? bidsData : []);
       setLiveProduce(Array.isArray(marketData) ? marketData : []);
     } catch (err: any) {
-      console.error("[TRADER_DASHBOARD] Failed to load data:", err.message);
+      console.error("[TRADER_DASHBOARD] Global failure:", err.message);
     } finally {
       setLoading(false);
     }

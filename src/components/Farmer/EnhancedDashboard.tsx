@@ -106,9 +106,12 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking, onRegisterRefresh }:
         .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'bids',
+            table: 'orders',
             filter: `farmer_id=eq.${farmerId}` 
-        }, () => fetchDashboardData())
+        }, () => {
+            console.log('[FARMER_DASHBOARD] Real-time update received');
+            fetchDashboardData();
+        })
         .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
@@ -271,7 +274,7 @@ const EnhancedDashboard = ({ farmerId, onViewOrderTracking, onRegisterRefresh }:
                         {listing.bids?.map((bid: any) => (
                           <div key={bid.id} className="flex justify-between items-center bg-white p-2 border rounded shadow-sm">
                             <div>
-                              <p className="font-semibold text-sm text-gray-800">{bid.users?.full_name || 'Trader'}</p>
+                              <p className="font-semibold text-sm text-gray-800">{bid.trader?.full_name || bid.users?.full_name || 'Trader'}</p>
                               <p className="text-xs text-gray-500">₹{bid.amount} for {bid.quantity} {listing.unit}</p>
                             </div>
                             <div>

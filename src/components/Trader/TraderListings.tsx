@@ -54,7 +54,7 @@ const TraderListings: React.FC<TraderListingsProps> = ({ onViewProduce, traderId
           basePrice: item.current_price || item.currentPrice,
           currentPrice: item.current_price || item.currentPrice,
           farmerId: item.farmer_id || item.farmerId,
-          farmerName: item.users?.full_name || item.farmerName || 'Unknown Farmer',
+          farmerName: item.farmer?.full_name || item.users?.full_name || item.farmerName || 'Unknown Farmer',
           location: item.location || 'Unknown Location',
           harvestDate: item.created_at || item.harvestDate,
           images: item.images || [],

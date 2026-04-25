@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './lib/contexts/AuthContext';
 import { DataProvider } from './lib/contexts/DataContext';
@@ -30,9 +30,117 @@ import { api } from './lib/api';
 import BankAccountSetup from './components/Farmer/BankAccountSetup';
 import OrderTracking from './components/OrderTracking';
 import FarmerKYC from './components/FarmerKYC';
-import { Landmark, ChevronRight, CheckCircle } from 'lucide-react';
+import { Landmark, ChevronRight, CheckCircle, WifiOff, RefreshCw } from 'lucide-react';
 import { User, Produce, Bid } from './types';
 import { requestForToken, onMessageListener } from './lib/firebase';
+
+// ============================================
+// ERROR BOUNDARY — catches React render crashes
+// ============================================
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[ErrorBoundary] Caught render crash:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Something went wrong</h2>
+            <p className="text-gray-500 text-sm mb-1">The app encountered an unexpected error.</p>
+            <p className="text-gray-400 text-xs mb-6 font-mono break-all">
+              {this.state.error?.message || 'Unknown error'}
+            </p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="bg-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto"
+            >
+              <RefreshCw size={16} />
+              Reload App
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ============================================
+// OFFLINE / BACKEND-DOWN BANNER
+// ============================================
+function ConnectivityBanner() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [backendOnline, setBackendOnline] = useState(true);
+  const [checking, setChecking] = useState(false);
+
+  // Monitor browser network status
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  // Periodic backend health check (every 30s when online, every 10s when backend is down)
+  useEffect(() => {
+    if (!isOnline) {
+      setBackendOnline(false);
+      return;
+    }
+
+    let cancelled = false;
+    const check = async () => {
+      if (cancelled) return;
+      setChecking(true);
+      const result = await api.healthCheck();
+      if (!cancelled) {
+        setBackendOnline(result.online);
+        setChecking(false);
+      }
+    };
+
+    check();
+    const interval = setInterval(check, backendOnline ? 30000 : 10000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [isOnline, backendOnline]);
+
+  if (isOnline && backendOnline) return null;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium shadow-lg animate-pulse">
+      <WifiOff size={16} />
+      {!isOnline
+        ? 'You are offline. Please check your internet connection.'
+        : 'Backend server is unreachable. Retrying automatically...'}
+    </div>
+  );
+}
 
 function AppContent() {
   const [appState, setAppState] = useState<'splash' | 'language' | 'auth' | 'main'>('splash');
@@ -353,13 +461,16 @@ function AppContent() {
 
 function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <DataProvider>
-          <AppContent />
-        </DataProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <AuthProvider>
+          <DataProvider>
+            <ConnectivityBanner />
+            <AppContent />
+          </DataProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }
 

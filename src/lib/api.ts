@@ -16,38 +16,102 @@ const getAuthHeaders = async (isFormData: boolean = false): Promise<HeadersInit>
   return headers;
 };
 
+/**
+ * Fetch with timeout — prevents hung connections when the backend is unresponsive.
+ */
+const fetchWithTimeout = (url: string, options?: RequestInit, timeoutMs: number = 15000): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId));
+};
+
+/**
+ * Determines whether a failed request should be retried.
+ * Only retry on network failures and server-side (5xx) errors — never on client errors (4xx).
+ */
+const isRetryable = (error: any, status?: number): boolean => {
+  // Network-level failures (backend offline, DNS failure, CORS when server is down)
+  if (error.name === 'AbortError') return true;              // timeout
+  if (error.name === 'TypeError') return true;                // fetch() failed entirely
+  if (error.message?.includes('Failed to fetch')) return true;
+  if (error.message?.includes('NetworkError')) return true;
+  if (error.message?.includes('error page')) return true;     // HTML error page from proxy
+  // Server-side errors
+  if (status && status >= 500) return true;
+  return false;
+};
+
+/**
+ * Resilient fetchJSON with:
+ *  - 15s request timeout
+ *  - Automatic retry (up to 3 attempts) with exponential backoff for network/5xx errors
+ *  - Clean error messages for non-retryable failures
+ */
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
+
 const fetchJSON = async (url: string, options?: RequestInit) => {
-  try {
-    const res = await fetch(url, options);
-    
-    // 1. Check for HTML error pages (often returned by proxies or crashed servers)
-    const contentType = res.headers.get("content-type");
-    if (contentType?.includes("text/html")) {
-      throw new Error("Server returned an error page. Backend might be down or misconfigured.");
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      // Wait before retry (skip delay on first attempt)
+      if (attempt > 0) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+        console.warn(`[fetchJSON] Retry ${attempt}/${MAX_RETRIES} for ${url} in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+
+      const res = await fetchWithTimeout(url, options);
+
+      // 1. Check for HTML error pages (often returned by proxies or crashed servers)
+      const contentType = res.headers.get("content-type");
+      if (contentType?.includes("text/html")) {
+        const htmlError = new Error("Server returned an error page. Backend might be down or misconfigured.");
+        (htmlError as any)._status = res.status;
+        throw htmlError;
+      }
+
+      // 2. Handle empty success responses
+      if (res.status === 204 || res.status === 304) return { success: true, data: [] };
+
+      // 3. Parse JSON
+      const data = await res.json().catch(() => null);
+
+      // 4. Handle non-ok responses
+      if (!res.ok) {
+        const errorMsg = data?.error || data?.message || `API Error (${res.status})`;
+        const apiError = new Error(errorMsg);
+        (apiError as any)._status = res.status;
+        throw apiError;
+      }
+
+      // 5. Return data correctly: unwrap { success: true, data: [...] } pattern if present
+      if (data && typeof data === 'object') {
+        if (data.success === false) throw new Error(data.error || "Request failed");
+        return data.data !== undefined ? data.data : data;
+      }
+      return data;
+
+    } catch (error: any) {
+      lastError = error;
+      const status = error._status;
+
+      // Only retry on retryable errors and if we haven't exhausted attempts
+      if (attempt < MAX_RETRIES && isRetryable(error, status)) {
+        continue;
+      }
+
+      // Non-retryable or exhausted retries — throw immediately
+      break;
     }
-
-    // 2. Handle empty success responses
-    if (res.status === 204 || res.status === 304) return { success: true, data: [] };
-
-    // 3. Parse JSON
-    const data = await res.json().catch(() => null);
-
-    // 4. Handle non-ok responses
-    if (!res.ok) {
-      const errorMsg = data?.error || data?.message || `API Error (${res.status})`;
-      throw new Error(errorMsg);
-    }
-
-    // 5. Return data correctly: unwrap { success: true, data: [...] } pattern if present
-    if (data && typeof data === 'object') {
-      if (data.success === false) throw new Error(data.error || "Request failed");
-      return data.data !== undefined ? data.data : data;
-    }
-    return data;
-  } catch (error: any) {
-    console.error(`[fetchJSON Error] ${url}:`, error);
-    throw error;
   }
+
+  // All retries exhausted
+  console.error(`[fetchJSON Error] ${url} (after ${MAX_RETRIES + 1} attempts):`, lastError);
+  throw lastError;
 };
 
 export const api = {
@@ -249,4 +313,24 @@ adminManualPayout: async (orderId: string) =>
     
   getTraders: async () => 
     fetchJSON(`${API_BASE_URL}/traders`, { method: 'GET', headers: await getAuthHeaders() }),
+
+  /**
+   * Lightweight health check — pings the backend root with a short timeout.
+   * Returns { online: true, latencyMs } on success, { online: false } on failure.
+   * Never throws; always returns a result.
+   */
+  healthCheck: async (): Promise<{ online: boolean; latencyMs?: number }> => {
+    const start = Date.now();
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetchWithTimeout(`${baseUrl}/api/health`, {}, 5000);
+      if (res.ok || res.status === 404) {
+        // 404 is fine — it means the server is alive but the route doesn't exist
+        return { online: true, latencyMs: Date.now() - start };
+      }
+      return { online: false };
+    } catch {
+      return { online: false };
+    }
+  },
 };

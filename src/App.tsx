@@ -147,7 +147,14 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [hasBankAccount, setHasBankAccount] = useState<boolean | null>(null);
 
-  const { user: currentUser, isAuthenticated, isLoading, logout, refreshUser } = useAuth();
+  const { user: currentUser, isAuthenticated, isLoading, logout, refreshUser, isRecovery } = useAuth();
+
+  // Auto-redirect to main if authenticated (e.g. on page reload or password reset)
+  useEffect(() => {
+    if (isAuthenticated && appState !== 'main') {
+      setAppState('main');
+    }
+  }, [isAuthenticated, appState]);
 
   // States
   const [produces, setProduces] = useState<Produce[]>([]); 
@@ -239,6 +246,40 @@ function AppContent() {
   const handleBackFromTransaction = () => setShowTransaction(false);
 
   if (appState === 'splash') return <SplashScreen onComplete={handleSplashComplete} />;
+
+  // Special Password Recovery Screen
+  if (isRecovery) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center p-6">
+        <div className="max-w-md mx-auto w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Set New Password</h2>
+            <p className="text-gray-500 text-sm mt-1">Please enter your new password below.</p>
+          </div>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const password = (e.target as any).newPassword.value;
+            try {
+              const { error } = await supabase.auth.updateUser({ password });
+              if (error) throw error;
+              alert('Password updated successfully! Redirecting to dashboard...');
+              window.location.reload(); // Reload to clear recovery state and load normally
+            } catch (err: any) {
+              alert(err.message || 'Failed to update password');
+            }
+          }} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <input type="password" name="newPassword" required minLength={6} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Enter new password" />
+            </div>
+            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-green-700 transition">
+              Save New Password
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   if (showTransaction) {
     return (

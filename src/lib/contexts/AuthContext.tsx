@@ -12,7 +12,8 @@ interface AuthContextType {
     logout: () => Promise<void>;
     signup: (data: any) => Promise<void>;
     refreshUser: () => Promise<void>;
-    resetPassword: (email: string) => Promise<void>; // Added reset password to interface
+    resetPassword: (email: string) => Promise<void>;
+    isRecovery: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +23,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [userRole, setUserRole] = useState<'farmer' | 'trader' | 'admin' | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isRecovery, setIsRecovery] = useState(false);
 
     useEffect(() => {
         // Validate the session via Supabase Auth on initial load
@@ -80,6 +82,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // 🔄 Subscribe to auth state changes to keep the JWT token fresh
         // When Supabase silently refreshes the token, we update localStorage immediately
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                setIsRecovery(true);
+            }
+            
             if (session) {
                 // Always keep the backend API token in sync
                 localStorage.setItem('supabase_token', session.access_token);
@@ -333,7 +339,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             logout,
             signup,
             refreshUser,
-            resetPassword // Added to provider
+            resetPassword,
+            isRecovery
         }}>
             {children}
         </AuthContext.Provider>
